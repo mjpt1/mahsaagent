@@ -1,10 +1,15 @@
 # Mahsaagent
 
+[![CI](https://github.com/mjpt1/mahsaagent/actions/workflows/ci.yml/badge.svg)](https://github.com/mjpt1/mahsaagent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
+[![npm](https://img.shields.io/npm/v/mahsaagent.svg)](https://www.npmjs.com/package/mahsaagent)
+
 **جعبه ابزار فارسی برای توسعه‌دهندگان** — راست‌چین (RTL)، تاریخ شمسی، اعتبارسنجی داده‌های ایرانی، تقسیمات کشوری رسمی، بانک/شبا، و سرور ابزار استاندارد (MCP) برای چند کلاینت.
 
 **Mahsaagent** is a Persian (Farsi) developer toolkit: RTL helpers, Jalali utilities, Iranian validation, official geo data, banking helpers, and an MCP tools server.
 
-[نصب](#نصب) · [CLI](#cli) · [اتصال کلاینت‌ها](#اتصال-کلاینتها) · [ابزارها](#فهرست-ابزارها) · [کتابخانه](#استفاده-بهعنوان-کتابخانه) · [مهارت‌ها و قالب‌ها](#مهارتها-و-قالبها) · [توسعه](#توسعه)
+[نصب](#نصب) · [CLI](#cli) · [اتصال کلاینت‌ها](#اتصال-کلاینتها) · [ابزارها](#فهرست-ابزارها) · [کتابخانه](#استفاده-بهعنوان-کتابخانه) · [مهارت‌ها و قالب‌ها](#مهارتها-و-قالبها) · [توسعه](#توسعه) · [Changelog](CHANGELOG.md)
 
 ---
 

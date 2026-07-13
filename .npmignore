@@ -1,0 +1,9 @@
+# Files published to npm (in addition to package.json "files")
+# Keep dist build artifacts; exclude local scratch.
+
+tmp-iran-cities/
+.git/
+.github/
+*.raw.json
+build-log.txt
+canvases/
