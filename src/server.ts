@@ -57,7 +57,18 @@ import {
   todayBusinessInfo,
 } from "./lib/businessDays.js";
 import { eventsForDate, eventsForYear } from "./data/events.js";
-import { detectFinancial, listBanks } from "./lib/financial.js";
+import { detectFinancial, listBanks, shebaToAccount, accountToSheba } from "./lib/financial.js";
+import { addressCascade, listCounties, listDistricts } from "./lib/address.js";
+import { searchVillages } from "./lib/villages.js";
+import { polishPersian } from "./lib/polish.js";
+import { convertMoney, formatMoneyFa, bankRound } from "./lib/currency.js";
+import {
+  generateTestNationalId,
+  generateTestSheba,
+  validateLegalIdDetailed,
+} from "./lib/generators.js";
+import { MockSmsProvider, buildOtpMessage, generateOtp } from "./lib/sms.js";
+import { buildMoadianInvoice, moadianSetupGuide } from "./moadian/index.js";
 
 export const TOOL_NAMES = [
   "jalali_today",
@@ -70,6 +81,7 @@ export const TOOL_NAMES = [
   "persian_normalize",
   "persian_digits",
   "persian_slugify",
+  "persian_polish",
   "persian_validate",
   "persian_batch_validate",
   "persian_plate",
@@ -77,21 +89,28 @@ export const TOOL_NAMES = [
   "persian_extract_cards",
   "persian_amount",
   "persian_words_to_number",
+  "persian_money",
   "persian_time_ago",
   "persian_remaining",
   "persian_financial",
+  "persian_sheba_convert",
+  "persian_generate_test",
+  "persian_sms_mock",
   "iran_provinces",
   "iran_cities",
+  "iran_address",
+  "iran_villages",
   "iran_postal",
   "iran_landline",
   "iran_banks",
+  "moadian_invoice",
   "mahsaagent_about",
 ] as const;
 
 export function createServer() {
   const server = new McpServer({
     name: "mahsaagent",
-    version: "0.4.0",
+    version: "0.5.0",
   });
 
   function json(data: unknown) {
@@ -474,16 +493,160 @@ export function createServer() {
 
   server.tool(
     "persian_financial",
-    "Detect and validate Iranian bank card or Sheba; attach bank registry info.",
+    "Detect and validate Iranian bank card or Sheba; attach bank registry info + logo URL.",
     { value: z.string() },
     async ({ value }) => json(detectFinancial(value))
   );
 
   server.tool(
+    "persian_sheba_convert",
+    "Convert Sheba ↔ account number (best-effort account extract / build IBAN with MOD-97).",
+    {
+      mode: z.enum(["sheba_to_account", "account_to_sheba"]),
+      sheba: z.string().optional(),
+      bankCode: z.string().optional(),
+      account: z.string().optional(),
+    },
+    async ({ mode, sheba, bankCode, account }) => {
+      if (mode === "sheba_to_account") {
+        if (!sheba) return json({ error: "sheba required" });
+        return json(shebaToAccount(sheba));
+      }
+      if (!bankCode || !account) return json({ error: "bankCode and account required" });
+      return json(accountToSheba(bankCode, account));
+    }
+  );
+
+  server.tool(
+    "persian_polish",
+    "Polish Persian text (punctuation, ZWNJ-ish spacing, digit direction) — virastar-inspired subset.",
+    {
+      text: z.string(),
+      digits: z.enum(["fa", "en", "keep"]).optional(),
+      zwnj: z.boolean().optional(),
+    },
+    async ({ text, digits, zwnj }) =>
+      json({ polished: polishPersian(text, { digits: digits ?? "keep", zwnj }) })
+  );
+
+  server.tool(
+    "persian_money",
+    "Rial ↔ Toman with bank-style rounding and Persian formatted output.",
+    {
+      amount: z.union([z.number(), z.string()]),
+      from: z.enum(["rial", "toman"]).optional(),
+      to: z.enum(["rial", "toman"]).optional(),
+    },
+    async ({ amount, from, to }) => {
+      const f = from ?? "toman";
+      const t = to ?? "toman";
+      const converted = convertMoney(amount, f, t);
+      return json({
+        ...converted,
+        labeled: formatMoneyFa(converted.value, t),
+        bankRoundExample: bankRound(Number(amount)),
+      });
+    }
+  );
+
+  server.tool(
+    "persian_generate_test",
+    "Generate valid-looking national ID / Sheba for tests (not real people/accounts). Legal ID detail check.",
+    {
+      kind: z.enum(["national_id", "sheba", "legal_id_check"]),
+      bankCode: z.string().optional(),
+      seed: z.number().optional(),
+      value: z.string().optional(),
+    },
+    async ({ kind, bankCode, seed, value }) => {
+      if (kind === "national_id") return json({ nationalId: generateTestNationalId(seed) });
+      if (kind === "sheba") return json({ sheba: generateTestSheba(bankCode ?? "054", seed) });
+      if (!value) return json({ error: "value required for legal_id_check" });
+      return json(validateLegalIdDetailed(value));
+    }
+  );
+
+  server.tool(
+    "persian_sms_mock",
+    "SMS/OTP contract helpers + in-memory mock send (no real gateway).",
+    {
+      action: z.enum(["otp", "send_mock"]),
+      mobile: z.string().optional(),
+      code: z.string().optional(),
+      appName: z.string().optional(),
+      length: z.number().int().min(4).max(8).optional(),
+    },
+    async ({ action, mobile, code, appName, length }) => {
+      if (action === "otp") {
+        const otp = code ?? generateOtp(length ?? 6);
+        const msg = buildOtpMessage(otp, appName ?? "App");
+        return json({ otp, message: msg });
+      }
+      const provider = new MockSmsProvider();
+      const otp = code ?? generateOtp(length ?? 6);
+      const msg = { ...buildOtpMessage(otp, appName ?? "App"), to: mobile ?? "09121234567" };
+      const result = await provider.send(msg);
+      return json({ result, sent: provider.sent });
+    }
+  );
+
+  server.tool(
     "iran_banks",
-    "List Iranian banks in the local registry (name, sheba code, card prefixes).",
+    "List Iranian banks in the local registry (name, sheba code, card prefixes, logo CDN).",
     {},
     async () => json({ banks: listBanks() })
+  );
+
+  server.tool(
+    "iran_address",
+    "Cascading address: provinces → counties → districts/cities for Iranian forms.",
+    {
+      province: z.string().optional(),
+      county: z.string().optional(),
+      cityQuery: z.string().optional(),
+      list: z.enum(["counties", "districts"]).optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    },
+    async ({ province, county, cityQuery, list, limit }) => {
+      if (list === "counties") return json(listCounties(province, limit ?? 50));
+      if (list === "districts") return json(listDistricts({ province, county, limit: limit ?? 50 }));
+      return json(addressCascade({ province, county, cityQuery }));
+    }
+  );
+
+  server.tool(
+    "iran_villages",
+    "Search district-linked rural settlements (province/county/district filters).",
+    {
+      query: z.string().optional(),
+      province: z.string().optional(),
+      county: z.string().optional(),
+      district: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    async (args) =>
+      json(
+        searchVillages(args.query ?? "", {
+          province: args.province,
+          county: args.county,
+          district: args.district,
+          limit: args.limit,
+        })
+      )
+  );
+
+  server.tool(
+    "moadian_invoice",
+    "Build/validate Moadian tax invoice payload shape + setup guide (no live tax API calls).",
+    {
+      action: z.enum(["guide", "build"]).optional(),
+      invoice: z.record(z.unknown()).optional(),
+    },
+    async ({ action, invoice }) => {
+      if ((action ?? "guide") === "guide") return json({ guide: moadianSetupGuide() });
+      if (!invoice) return json({ error: "invoice object required for build" });
+      return json(buildMoadianInvoice(invoice as Parameters<typeof buildMoadianInvoice>[0]));
+    }
   );
 
   server.tool(
@@ -493,7 +656,7 @@ export function createServer() {
     async () =>
       json({
         name: "mahsaagent",
-        version: "0.4.0",
+        version: "0.5.0",
         description: "Persian developer toolkit: RTL, Jalali, locale validation, geo, banks, UI skills",
         tools: TOOL_NAMES,
         toolCount: TOOL_NAMES.length,
@@ -511,7 +674,7 @@ export function createServer() {
           "mahsaagent://jalali/months",
           "mahsaagent://iran/banks",
         ],
-        zod: "import from mahsaagent/zod",
+        exports: ["mahsaagent/zod", "mahsaagent/react", "mahsaagent/moadian"],
       })
   );
 

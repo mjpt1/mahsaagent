@@ -1,6 +1,7 @@
 import { digitsFaToEn } from "@persian-tools/persian-tools";
 import { findBankByCard, findBankByShebaCode, BANKS } from "../data/banks.js";
 import { validateCard, validateSheba } from "./text.js";
+import { enrichBank, shebaToAccount, bankLogoUrl } from "./shebaConvert.js";
 
 export function detectFinancial(value: string) {
   const raw = digitsFaToEn(value).replace(/[\s-]/g, "");
@@ -10,16 +11,24 @@ export function detectFinancial(value: string) {
   // Sheba / IBAN
   if (upper.includes("IR") || (digits.length === 24 && !upper.startsWith("IR"))) {
     const sheba = validateSheba(upper.startsWith("IR") ? upper : `IR${digits}`);
-    const code = sheba.normalized.replace(/^IR/i, "").slice(2, 5);
-    const bank = findBankByShebaCode(code) ?? findBankByShebaCode(sheba.info?.code ?? "");
+    const converted = shebaToAccount(sheba.normalized);
+    const bank =
+      findBankByShebaCode(converted.bankCode ?? "") ??
+      findBankByShebaCode(sheba.info?.code ?? "");
     return {
       kind: "sheba" as const,
       ...sheba,
-      bank: bank
-        ? { id: bank.id, name: bank.name, nameEn: bank.nameEn, shebaCode: bank.shebaCode }
-        : sheba.info
-          ? { name: sheba.info.persianName, nameEn: sheba.info.name, shebaCode: sheba.info.code }
-          : null,
+      bank:
+        enrichBank(bank) ??
+        (sheba.info
+          ? {
+              name: sheba.info.persianName,
+              nameEn: sheba.info.name,
+              shebaCode: sheba.info.code,
+            }
+          : null),
+      accountNumber: converted.accountNumber,
+      bankCode: converted.bankCode,
     };
   }
 
@@ -30,11 +39,7 @@ export function detectFinancial(value: string) {
     return {
       kind: "card" as const,
       ...card,
-      bank: bank
-        ? { id: bank.id, name: bank.name, nameEn: bank.nameEn, shebaCode: bank.shebaCode }
-        : card.bankName
-          ? { name: card.bankName }
-          : null,
+      bank: enrichBank(bank) ?? (card.bankName ? { name: card.bankName } : null),
     };
   }
 
@@ -53,5 +58,8 @@ export function listBanks() {
     nameEn: b.nameEn,
     shebaCode: b.shebaCode ?? null,
     cardPrefixes: b.cardPrefixes,
+    logoUrl: bankLogoUrl(b.id),
   }));
 }
+
+export { shebaToAccount, accountToSheba, bankLogoUrl, enrichBank } from "./shebaConvert.js";

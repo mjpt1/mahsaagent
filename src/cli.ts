@@ -35,13 +35,24 @@ import {
   lookupLandline,
   listProvinceTelPrefixes,
 } from "./lib/geo.js";
-import { detectFinancial, listBanks } from "./lib/financial.js";
+import {
+  detectFinancial,
+  listBanks,
+  shebaToAccount,
+  accountToSheba,
+} from "./lib/financial.js";
 import {
   isBusinessDay,
   nextBusinessDay,
   todayBusinessInfo,
 } from "./lib/businessDays.js";
 import { eventsForDate, eventsForYear } from "./data/events.js";
+import { addressCascade, listCounties, listDistricts } from "./lib/address.js";
+import { searchVillages } from "./lib/villages.js";
+import { polishPersian } from "./lib/polish.js";
+import { convertMoney, formatMoneyFa } from "./lib/currency.js";
+import { generateTestNationalId, generateTestSheba } from "./lib/generators.js";
+import { moadianSetupGuide } from "./moadian/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -63,19 +74,26 @@ Usage:
   mahsaagent today [--en]            Today's Jalali date
   mahsaagent convert <date>          Auto-detect & convert (1405/1/1 or 2026-03-21)
   mahsaagent normalize <text>        Normalize Persian text
+  mahsaagent polish <text>           Polish Persian text (virastar-like)
   mahsaagent digits <text> <dir>     en_to_fa | fa_to_en | ar_to_fa
   mahsaagent slug <text>             Persian slug
   mahsaagent validate <kind> <value> national_id|sheba|card|mobile|postal_code|legal_id
   mahsaagent amount <number>         Format + words
+  mahsaagent money <n> [from] [to]   Rial/Toman convert (default toman→toman)
   mahsaagent words <text>            Persian words → number
   mahsaagent provinces [query]       List/search provinces
   mahsaagent cities [query]          Search cities (or --province <name>)
+  mahsaagent address [--province x]  Cascading address / counties / districts
+  mahsaagent villages [query]        Rural settlements by district
   mahsaagent postal <code>           Postal code → province prefix
   mahsaagent landline [phone]        Area code → province (--list for prefixes)
   mahsaagent financial <value>       Detect card/Sheba + bank
+  mahsaagent sheba <mode> ...        sheba_to_account <sheba> | account_to_sheba <code> <acc>
+  mahsaagent gen <national_id|sheba> Generate test IDs
   mahsaagent banks                   List bank registry
   mahsaagent business [date]         Business-day check (default: today)
   mahsaagent events [year|date]      Cultural/religious events
+  mahsaagent moadian                 Moadian setup guide
   mahsaagent version | help
 `.trim()
   );
@@ -92,6 +110,8 @@ function doctor() {
     { name: "package.json", path: path.join(root, "package.json") },
     { name: "dist/server.js", path: path.join(root, "dist", "server.js") },
     { name: "dist/data/cities.json", path: path.join(root, "dist", "data", "cities.json") },
+    { name: "dist/data/counties.json", path: path.join(root, "dist", "data", "counties.json") },
+    { name: "dist/data/villages.json", path: path.join(root, "dist", "data", "villages.json") },
     { name: "src/data/cities.json", path: path.join(root, "src", "data", "cities.json") },
     { name: "rtl/inject.js", path: path.join(root, "rtl", "inject.js") },
     { name: "skills/persian-ui", path: path.join(root, "skills", "persian-ui", "SKILL.md") },
@@ -100,6 +120,7 @@ function doctor() {
     { name: "skills/persian-forms", path: path.join(root, "skills", "persian-forms", "SKILL.md") },
     { name: "skills/persian-copy", path: path.join(root, "skills", "persian-copy", "SKILL.md") },
     { name: "skills/shadcn-persian", path: path.join(root, "skills", "shadcn-persian", "SKILL.md") },
+    { name: "templates/next-rtl-iran", path: path.join(root, "templates", "next-rtl-iran", "README.md") },
     { name: "extension", path: path.join(root, "extension", "extension.js") },
   ];
   console.log(`Mahsaagent doctor (v${pkg.version})\nRoot: ${root}\n`);
@@ -157,7 +178,6 @@ function cmdConvert(raw?: string) {
   const year = Number(m[1]);
   const month = Number(m[2]);
   const day = Number(m[3]);
-  // Gregorian years are typically >= 1700; Jalali civil years are ~1300–1500 today
   const preferGregorian = year >= 1700;
   if (preferGregorian) {
     const j = gregorianToJalali(year, month, day);
@@ -211,6 +231,34 @@ function cmdCities(args: string[]) {
   }
   const query = args.join(" ").trim();
   console.log(JSON.stringify(searchCities(query), null, 2));
+}
+
+function cmdAddress(args: string[]) {
+  const get = (flag: string) => {
+    const i = args.indexOf(flag);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+  if (args.includes("--counties")) {
+    console.log(JSON.stringify(listCounties(get("--province"), 80), null, 2));
+    return;
+  }
+  if (args.includes("--districts")) {
+    console.log(
+      JSON.stringify(listDistricts({ province: get("--province"), county: get("--county"), limit: 80 }), null, 2)
+    );
+    return;
+  }
+  console.log(
+    JSON.stringify(
+      addressCascade({
+        province: get("--province"),
+        county: get("--county"),
+        cityQuery: get("--city"),
+      }),
+      null,
+      2
+    )
+  );
 }
 
 function cmdBusiness(raw?: string) {
@@ -307,6 +355,9 @@ async function main() {
     case "normalize":
       console.log(normalizePersian(rest.join(" ") || "", { halfSpace: true, digits: "keep" }));
       break;
+    case "polish":
+      console.log(polishPersian(rest.join(" ") || "", { digits: "fa", zwnj: true }));
+      break;
     case "digits": {
       const dir = rest[1] as "en_to_fa" | "fa_to_en" | "ar_to_fa";
       if (!rest[0] || !dir) {
@@ -325,6 +376,18 @@ async function main() {
     case "amount":
       console.log(formatAmountFa(rest[0] ?? ""), "/", amountToPersianWords(rest[0] ?? ""));
       break;
+    case "money": {
+      const amount = rest[0];
+      const from = (rest[1] as "rial" | "toman") || "toman";
+      const to = (rest[2] as "rial" | "toman") || from;
+      if (!amount) {
+        console.error("Usage: mahsaagent money <amount> [rial|toman] [rial|toman]");
+        process.exit(1);
+      }
+      const r = convertMoney(amount, from, to);
+      console.log(JSON.stringify({ ...r, labeled: formatMoneyFa(r.value, to) }, null, 2));
+      break;
+    }
     case "words":
       console.log(JSON.stringify(wordsToAmount(rest.join(" ")), null, 2));
       break;
@@ -333,6 +396,21 @@ async function main() {
       break;
     case "cities":
       cmdCities(rest);
+      break;
+    case "address":
+      cmdAddress(rest);
+      break;
+    case "villages":
+      console.log(
+        JSON.stringify(
+          searchVillages(rest.filter((a) => !a.startsWith("--")).join(" "), {
+            province: rest.includes("--province") ? rest[rest.indexOf("--province") + 1] : undefined,
+            county: rest.includes("--county") ? rest[rest.indexOf("--county") + 1] : undefined,
+          }),
+          null,
+          2
+        )
+      );
       break;
     case "postal":
       if (!rest[0]) {
@@ -358,6 +436,26 @@ async function main() {
       }
       console.log(JSON.stringify(detectFinancial(rest.join("")), null, 2));
       break;
+    case "sheba": {
+      const mode = rest[0];
+      if (mode === "sheba_to_account" && rest[1]) {
+        console.log(JSON.stringify(shebaToAccount(rest[1]), null, 2));
+      } else if (mode === "account_to_sheba" && rest[1] && rest[2]) {
+        console.log(JSON.stringify(accountToSheba(rest[1], rest[2]), null, 2));
+      } else {
+        console.error("Usage: mahsaagent sheba sheba_to_account <IR...> | account_to_sheba <code> <account>");
+        process.exit(1);
+      }
+      break;
+    }
+    case "gen":
+      if (rest[0] === "national_id") console.log(generateTestNationalId(Number(rest[1]) || undefined));
+      else if (rest[0] === "sheba") console.log(generateTestSheba(rest[1] ?? "054", Number(rest[2]) || undefined));
+      else {
+        console.error("Usage: mahsaagent gen national_id [seed] | sheba [bankCode] [seed]");
+        process.exit(1);
+      }
+      break;
     case "banks":
       console.log(JSON.stringify({ banks: listBanks() }, null, 2));
       break;
@@ -366,6 +464,9 @@ async function main() {
       break;
     case "events":
       cmdEvents(rest[0]);
+      break;
+    case "moadian":
+      console.log(moadianSetupGuide());
       break;
     case "version":
     case "-V":

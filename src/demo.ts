@@ -122,5 +122,17 @@ export async function runDemo() {
     next: formatJalali(biz.nextBusinessDay, { digits: "fa" }),
   });
 
+  section("۱۰) v0.5 — polish / money / address / moadian");
+  const { polishPersian } = await import("./lib/polish.js");
+  const { convertMoney } = await import("./lib/currency.js");
+  const { addressCascade } = await import("./lib/address.js");
+  const { generateTestNationalId } = await import("./lib/generators.js");
+  const { moadianSetupGuide } = await import("./moadian/index.js");
+  console.log("polish →", polishPersian("سلام ,دنیا?"));
+  console.log("money 10k toman → rial", convertMoney(10000, "toman", "rial"));
+  console.log("gen national_id →", generateTestNationalId(7));
+  console.log("address تهران counties →", addressCascade({ province: "تهران" }).counties.length);
+  console.log(moadianSetupGuide().split("\n")[0]);
+
   console.log("\n✓ Mahsaagent demo تمام شد.\n");
 }

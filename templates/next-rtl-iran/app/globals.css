@@ -1,0 +1,92 @@
+:root {
+  --bg: #f3efe6;
+  --ink: #1c1914;
+  --accent: #0f5c4c;
+  --line: #d6cfc0;
+  --card: #fffcf5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Vazirmatn, Tahoma, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 500px at 10% -10%, #d9efe6 0%, transparent 55%),
+    radial-gradient(900px 400px at 100% 0%, #f0e2c8 0%, transparent 50%),
+    var(--bg);
+  line-height: 1.7;
+}
+
+main {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+h1 {
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+}
+
+.lead {
+  margin: 0 0 1.75rem;
+  opacity: 0.8;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 1.25rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+input,
+select {
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+}
+
+button {
+  font: inherit;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #f4fffb;
+  cursor: pointer;
+}
+
+.error {
+  color: #9b1c1c;
+  font-size: 0.85rem;
+}
+
+.ok {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #e5f6ef;
+  border: 1px solid #b7e0cf;
+  border-radius: 6px;
+}
+
+.meta {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}

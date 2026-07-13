@@ -1,8 +1,8 @@
 {
   "name": "mahsaagent-rtl",
-  "displayName": "Mahsaagent RTL",
-  "description": "Persian and Arabic RTL for chat and markdown panels. Code stays LTR. Status bar + apply/remove snippets.",
-  "version": "0.3.0",
+  "displayName": "Mahsaagent",
+  "description": "Persian RTL, Jalali insert, polish selection, and Iranian field validation helpers for the editor.",
+  "version": "0.5.0",
   "publisher": "mahsaagent",
   "engines": {
     "vscode": "^1.85.0"
@@ -13,6 +13,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "mahsaagent.showPanel",
+        "title": "Mahsaagent: Open panel"
+      },
+      {
         "command": "mahsaagent.copyRtlSnippet",
         "title": "Mahsaagent: Copy RTL snippet"
       },
@@ -21,11 +25,23 @@
         "title": "Mahsaagent: Copy RTL remove snippet"
       },
       {
+        "command": "mahsaagent.insertJalaliToday",
+        "title": "Mahsaagent: Insert Jalali today"
+      },
+      {
+        "command": "mahsaagent.polishSelection",
+        "title": "Mahsaagent: Polish Persian selection"
+      },
+      {
+        "command": "mahsaagent.validateSelection",
+        "title": "Mahsaagent: Validate selection"
+      },
+      {
         "command": "mahsaagent.showRtlHelp",
         "title": "Mahsaagent: RTL setup help"
       }
     ]
   },
-  "keywords": ["persian", "farsi", "arabic", "rtl", "cursor"],
+  "keywords": ["persian", "farsi", "arabic", "rtl", "jalali", "cursor"],
   "license": "MIT"
 }

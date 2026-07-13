@@ -14,7 +14,6 @@ import {
   addCommas,
   isPersian,
   hasPersian,
-  Plate,
   Bill,
   extractCardNumber,
   halfSpace as ptHalfSpace,
@@ -26,6 +25,8 @@ import { persianWordsToInteger } from "./wordsToNumber.js";
 import { findProvinces, PROVINCES } from "../data/provinces.js";
 import { verifyNationalIdChecksum } from "./nationalId.js";
 import { lookupPostalCode } from "./geo.js";
+import { validateLegalIdDetailed } from "./generators.js";
+import { parsePlateDetailed } from "./plate.js";
 
 export function normalizePersian(
   text: string,
@@ -112,8 +113,13 @@ export function validateNationalId(id: string) {
 }
 
 export function validateLegalId(id: string) {
-  const normalized = digitsFaToEn(id).replace(/\D/g, "");
-  return { valid: Boolean(verifyIranianLegalId(normalized)), normalized };
+  const detail = validateLegalIdDetailed(id);
+  const legacy = Boolean(verifyIranianLegalId(detail.normalized));
+  return {
+    valid: detail.valid || legacy,
+    normalized: detail.normalized,
+    detail,
+  };
 }
 
 export function validateSheba(sheba: string) {
@@ -145,12 +151,7 @@ export function validatePostalCode(code: string) {
 }
 
 export function parsePlate(plate: string) {
-  try {
-    const result = Plate(digitsFaToEn(plate).replace(/\s+/g, ""));
-    return { ok: true as const, result };
-  } catch (err) {
-    return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
-  }
+  return parsePlateDetailed(plate);
 }
 
 /** Local shape of Bill.getResult() — BillResult is not exported from @persian-tools. */

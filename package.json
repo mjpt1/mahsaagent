@@ -1,6 +1,6 @@
 {
   "name": "mahsaagent",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Persian developer toolkit: RTL for editors, Jalali locale tools, Iranian validation, geo, banks, and UI skills",
   "type": "module",
   "bin": {
@@ -11,7 +11,10 @@
     ".": "./dist/server.js",
     "./jalali": "./dist/lib/jalali.js",
     "./text": "./dist/lib/text.js",
-    "./zod": "./dist/zod/index.js"
+    "./zod": "./dist/zod/index.js",
+    "./react": "./dist/react/index.js",
+    "./moadian": "./dist/moadian/index.js",
+    "./address": "./dist/address.js"
   },
   "files": [
     "dist",
@@ -31,7 +34,7 @@
     "doctor": "node dist/index.js doctor",
     "tools": "node dist/index.js tools",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/smoke.test.ts src/lib/wordsToNumber.test.ts src/lib/nationalId.test.ts src/lib/geo.test.ts"
+    "test": "tsx --test src/smoke.test.ts src/lib/wordsToNumber.test.ts src/lib/nationalId.test.ts src/lib/geo.test.ts src/lib/v05.test.ts"
   },
   "keywords": [
     "persian",
@@ -45,12 +48,21 @@
     "sheba",
     "national-id",
     "postal-code",
-    "iran-cities"
+    "iran-cities",
+    "moadian"
   ],
   "author": "Mahsaagent",
   "license": "MIT",
   "engines": {
     "node": ">=18"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
@@ -60,6 +72,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
+    "@types/react": "^19.2.17",
+    "react": "^19.2.7",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }
