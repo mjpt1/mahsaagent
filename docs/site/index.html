@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mahsaagent — جعبه ابزار فارسی</title>
+  <link href="https://cdn.jsdelivr.net/npm/vazirmatn@33.003/Vazirmatn-font-face.css" rel="stylesheet" />
+  <style>
+    :root { --bg:#f6f1e8; --ink:#1a1714; --accent:#0d5c4c; --line:#d9d0c0; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Vazirmatn, Tahoma, sans-serif; background:
+      radial-gradient(900px 400px at 100% 0%, #e8dcc4, transparent),
+      radial-gradient(800px 360px at 0% 10%, #d7ebe3, transparent), var(--bg);
+      color: var(--ink); line-height: 1.8; }
+    main { max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); margin: 0 0 .35rem; }
+    h2 { font-size: 1.2rem; margin: 2rem 0 .6rem; color: var(--accent); }
+    .lead { opacity: .8; margin: 0 0 1.5rem; }
+    code, pre { font-family: ui-monospace, Consolas, monospace; font-size: .9rem; }
+    pre { background: #fffdf8; border: 1px solid var(--line); padding: 1rem; overflow: auto; }
+    a { color: var(--accent); }
+    ul { padding-right: 1.2rem; }
+    .meta { margin-top: 2rem; font-size: .9rem; opacity: .7; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Mahsaagent</h1>
+    <p class="lead">جعبه ابزار فارسی برای ادیتور و اپ — RTL، جلالی، اعتبارسنجی ایرانی، geo رسمی، بانک، MCP چندکلاینته.</p>
+
+    <h2>نصب</h2>
+    <pre>npm install mahsaagent
+npm run build   # اگر از سورس کلون کرده‌اید</pre>
+
+    <h2>ابزارها</h2>
+    <ul>
+      <li>stdio: <code>npx mahsaagent serve</code></li>
+      <li>HTTP: <code>npx mahsaagent serve-http --port 3847</code></li>
+      <li>کلاینت‌ها: <a href="../clients.md">docs/clients.md</a></li>
+    </ul>
+
+    <h2>Exports</h2>
+    <pre>import { nationalIdSchema } from "mahsaagent/zod";
+import { useJalali, useBankSync } from "mahsaagent/react";
+import { useJalali as useJalaliVue } from "mahsaagent/vue";
+import { createIpgRegistry } from "mahsaagent/ipg";</pre>
+
+    <h2>Geo رسمی</h2>
+    <p>داده از <code>ahmadazizi/iran-cities</code> v3 — استان، شهرستان، بخش، دهستان، شهر، آبادی (~۹۸ هزار).</p>
+
+    <h2>مهارت‌ها</h2>
+    <p><code>jalali-datepicker</code> · <code>iran-forms-kit</code> · و skillهای قبلی فارسی/RTL</p>
+
+    <p class="meta">MIT · <a href="https://github.com/mjpt1/mahsaagent">github.com/mjpt1/mahsaagent</a></p>
+  </main>
+</body>
+</html>

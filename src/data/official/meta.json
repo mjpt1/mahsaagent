@@ -1,0 +1,13 @@
+{
+  "source": "ahmadazizi/iran-cities v3.0",
+  "license": "See upstream LICENSE",
+  "counts": {
+    "ostan": 31,
+    "shahrestan": 448,
+    "bakhsh": 1099,
+    "dehestan": 2637,
+    "shahr": 1554,
+    "abadi": 98100
+  },
+  "sampleProvince": "آذربایجان شرقی"
+}

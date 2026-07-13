@@ -1,7 +1,7 @@
 {
   "name": "mahsaagent",
-  "version": "0.5.1",
-  "description": "Persian developer toolkit: RTL for editors, Jalali locale tools, Iranian validation, geo, banks, and UI skills. MCP tools server for multiple clients.",
+  "version": "0.6.0",
+  "description": "Persian developer toolkit: RTL, Jalali, Iranian validation, official geo, banks, MCP tools for multiple clients",
   "type": "module",
   "bin": {
     "mahsaagent": "./dist/index.js"
@@ -13,7 +13,10 @@
     "./text": "./dist/lib/text.js",
     "./zod": "./dist/zod/index.js",
     "./react": "./dist/react/index.js",
+    "./react/forms": "./dist/react/forms-entry.js",
+    "./vue": "./dist/vue/index.js",
     "./moadian": "./dist/moadian/index.js",
+    "./ipg": "./dist/ipg/index.js",
     "./address": "./dist/address.js"
   },
   "files": [
@@ -24,18 +27,33 @@
     "config",
     "docs",
     "templates",
-    "examples"
+    "examples",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc && node scripts/copy-data.mjs",
+    "import:geo": "node scripts/import-iran-cities.mjs",
     "dev": "tsc --watch",
     "start": "node dist/index.js serve",
     "demo": "node dist/index.js demo",
     "doctor": "node dist/index.js doctor",
     "tools": "node dist/index.js tools",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/smoke.test.ts src/lib/wordsToNumber.test.ts src/lib/nationalId.test.ts src/lib/geo.test.ts src/lib/v05.test.ts"
+    "test": "tsx --test src/smoke.test.ts src/lib/wordsToNumber.test.ts src/lib/nationalId.test.ts src/lib/geo.test.ts src/lib/v05.test.ts src/lib/v06.test.ts",
+    "prepublishOnly": "npm run build && npm test"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mjpt1/mahsaagent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mjpt1/mahsaagent/issues"
+  },
+  "homepage": "https://github.com/mjpt1/mahsaagent#readme",
   "keywords": [
     "persian",
     "farsi",
@@ -43,11 +61,9 @@
     "jalali",
     "shamsi",
     "locale",
-    "cursor",
-    "vscode",
+    "mcp",
     "sheba",
     "national-id",
-    "postal-code",
     "iran-cities",
     "moadian"
   ],
@@ -57,10 +73,18 @@
     "node": ">=18"
   },
   "peerDependencies": {
-    "react": ">=18"
+    "react": ">=18",
+    "react-hook-form": ">=7",
+    "vue": ">=3"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "react-hook-form": {
       "optional": true
     }
   },
@@ -75,6 +99,7 @@
     "@types/react": "^19.2.17",
     "react": "^19.2.7",
     "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vue": "^3.5.39"
   }
 }

@@ -58,8 +58,7 @@ import {
 } from "./lib/businessDays.js";
 import { eventsForDate, eventsForYear } from "./data/events.js";
 import { detectFinancial, listBanks, shebaToAccount, accountToSheba } from "./lib/financial.js";
-import { addressCascade, listCounties, listDistricts } from "./lib/address.js";
-import { searchVillages } from "./lib/villages.js";
+import { addressCascade } from "./lib/address.js";
 import { polishPersian } from "./lib/polish.js";
 import { convertMoney, formatMoneyFa, bankRound } from "./lib/currency.js";
 import {
@@ -69,6 +68,26 @@ import {
 } from "./lib/generators.js";
 import { MockSmsProvider, buildOtpMessage, generateOtp } from "./lib/sms.js";
 import { buildMoadianInvoice, moadianSetupGuide } from "./moadian/index.js";
+import { parsePersianDatePhrase } from "./lib/dateNlp.js";
+import { holidaysForYear, isHolidayDate } from "./data/holidayPacks.js";
+import {
+  officialAddressCascade,
+  searchOfficialVillages,
+  searchOfficialCities,
+  listShahrestan,
+  listBakhsh,
+  listDehestan,
+  officialMeta,
+  listOfficialOstans,
+} from "./lib/officialGeo.js";
+import {
+  validatePassport,
+  validateCryptoAddress,
+  provinceFromGps,
+  postalToPlace,
+} from "./lib/extraValidate.js";
+import { finglishToPersian, persianToFinglish } from "./lib/finglish.js";
+import { createIpgRegistry } from "./ipg/index.js";
 
 export const TOOL_NAMES = [
   "jalali_today",
@@ -78,10 +97,12 @@ export const TOOL_NAMES = [
   "jalali_month",
   "jalali_business_day",
   "jalali_events",
+  "jalali_parse_phrase",
   "persian_normalize",
   "persian_digits",
   "persian_slugify",
   "persian_polish",
+  "persian_finglish",
   "persian_validate",
   "persian_batch_validate",
   "persian_plate",
@@ -96,21 +117,26 @@ export const TOOL_NAMES = [
   "persian_sheba_convert",
   "persian_generate_test",
   "persian_sms_mock",
+  "persian_passport",
+  "persian_crypto",
   "iran_provinces",
   "iran_cities",
   "iran_address",
   "iran_villages",
   "iran_postal",
   "iran_landline",
+  "iran_gps",
   "iran_banks",
+  "iran_geo_meta",
   "moadian_invoice",
+  "ipg_mock",
   "mahsaagent_about",
 ] as const;
 
 export function createServer() {
   const server = new McpServer({
     name: "mahsaagent",
-    version: "0.5.1",
+    version: "0.6.0",
   });
 
   function json(data: unknown) {
@@ -445,36 +471,61 @@ export function createServer() {
           month,
           day,
           events: eventsForDate(year, month, day),
+          holidayPack: isHolidayDate(year, month, day),
           officialSolar: holidaysForJalaliDate(year, month, day),
         });
       }
       return json({
         year,
         events: eventsForYear(year),
+        holidayPack: holidaysForYear(year),
         note: "Religious entries are approximate (±1 day possible).",
       });
     }
   );
 
   server.tool(
-    "iran_cities",
-    "Search Iranian cities (1195+) or list cities of a province.",
-    {
-      query: z.string().optional(),
-      province: z.string().optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-    },
-    async ({ query, province, limit }) => {
-      if (province) return json(citiesByProvince(province, limit ?? 50));
-      return json(searchCities(query ?? "", limit ?? 20));
-    }
+    "jalali_parse_phrase",
+    "Parse Persian/Finglish date phrases (امروز، فردا، ۲۱ خرداد، جمعه) into Jalali parts.",
+    { text: z.string() },
+    async ({ text }) => json(parsePersianDatePhrase(text))
   );
 
   server.tool(
     "iran_postal",
     "Validate Iranian postal code and infer province from prefix.",
     { code: z.string() },
-    async ({ code }) => json(lookupPostalCode(code))
+    async ({ code }) => json(postalToPlace(code))
+  );
+
+  server.tool(
+    "iran_cities",
+    "Search Iranian cities (legacy list + official iran-cities shahr).",
+    {
+      query: z.string().optional(),
+      province: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      source: z.enum(["legacy", "official", "both"]).optional(),
+    },
+    async ({ query, province, limit, source }) => {
+      const src = source ?? "both";
+      const lim = limit ?? 20;
+      if (province && src !== "official") {
+        const legacy = citiesByProvince(province, lim);
+        if (src === "legacy") return json(legacy);
+        return json({
+          legacy,
+          official: searchOfficialCities(province, lim),
+        });
+      }
+      const q = query ?? "";
+      if (src === "legacy") return json(searchCities(q, lim));
+      if (src === "official") return json(searchOfficialCities(q, lim));
+      return json({
+        legacy: searchCities(q, lim),
+        official: searchOfficialCities(q, lim),
+      });
+    }
   );
 
   server.tool(
@@ -519,7 +570,7 @@ export function createServer() {
 
   server.tool(
     "persian_polish",
-    "Polish Persian text (punctuation, ZWNJ-ish spacing, digit direction) — virastar-inspired subset.",
+    "Polish Persian text (punctuation, ZWNJ, quotes, hamzeh) — virastar-inspired.",
     {
       text: z.string(),
       digits: z.enum(["fa", "en", "keep"]).optional(),
@@ -527,6 +578,22 @@ export function createServer() {
     },
     async ({ text, digits, zwnj }) =>
       json({ polished: polishPersian(text, { digits: digits ?? "keep", zwnj }) })
+  );
+
+  server.tool(
+    "persian_finglish",
+    "Convert Finglish ↔ Persian (best-effort) for search and UX.",
+    {
+      text: z.string(),
+      direction: z.enum(["to_persian", "to_finglish"]).optional(),
+    },
+    async ({ text, direction }) => {
+      const dir = direction ?? "to_persian";
+      return json({
+        direction: dir,
+        result: dir === "to_persian" ? finglishToPersian(text) : persianToFinglish(text),
+      });
+    }
   );
 
   server.tool(
@@ -598,25 +665,65 @@ export function createServer() {
   );
 
   server.tool(
+    "persian_passport",
+    "Validate Iranian passport number format.",
+    { value: z.string() },
+    async ({ value }) => json(validatePassport(value))
+  );
+
+  server.tool(
+    "persian_crypto",
+    "Validate crypto wallet address (TRC20 / ERC20 / BTC) format.",
+    { address: z.string() },
+    async ({ address }) => json(validateCryptoAddress(address))
+  );
+
+  server.tool(
+    "iran_gps",
+    "Map GPS coordinates → Iranian province (local polygon lookup).",
+    { latitude: z.number(), longitude: z.number() },
+    async ({ latitude, longitude }) => json(provinceFromGps(latitude, longitude))
+  );
+
+  server.tool(
+    "iran_geo_meta",
+    "Official iran-cities dataset counts (ostan/shahrestan/bakhsh/dehestan/shahr/abadi).",
+    {},
+    async () => json(officialMeta())
+  );
+
+  server.tool(
     "iran_address",
-    "Cascading address: provinces → counties → districts/cities for Iranian forms.",
+    "Cascading address from official iran-cities: ostan → shahrestan → bakhsh/dehestan → shahr.",
     {
       province: z.string().optional(),
       county: z.string().optional(),
       cityQuery: z.string().optional(),
-      list: z.enum(["counties", "districts"]).optional(),
+      list: z.enum(["counties", "districts", "rural", "ostans"]).optional(),
       limit: z.number().int().min(1).max(200).optional(),
     },
     async ({ province, county, cityQuery, list, limit }) => {
-      if (list === "counties") return json(listCounties(province, limit ?? 50));
-      if (list === "districts") return json(listDistricts({ province, county, limit: limit ?? 50 }));
-      return json(addressCascade({ province, county, cityQuery }));
+      if (list === "ostans") return json(listOfficialOstans());
+      if (list === "counties") return json(listShahrestan(province, limit ?? 80));
+      if (list === "districts")
+        return json(listBakhsh({ ostan: province, shahrestan: county, limit: limit ?? 80 }));
+      if (list === "rural")
+        return json(listDehestan({ ostan: province, shahrestan: county, limit: limit ?? 80 }));
+      // Prefer official cascade; keep legacy helper as fallback key
+      return json({
+        official: officialAddressCascade({
+          ostan: province,
+          shahrestan: county,
+          cityQuery,
+        }),
+        legacy: addressCascade({ province, county, cityQuery }),
+      });
     }
   );
 
   server.tool(
     "iran_villages",
-    "Search district-linked rural settlements (province/county/district filters).",
+    "Search official villages/abadi (~98k) from iran-cities v3 (province/county filters).",
     {
       query: z.string().optional(),
       province: z.string().optional(),
@@ -626,13 +733,41 @@ export function createServer() {
     },
     async (args) =>
       json(
-        searchVillages(args.query ?? "", {
-          province: args.province,
-          county: args.county,
-          district: args.district,
+        searchOfficialVillages(args.query ?? "", {
+          ostan: args.province,
+          shahrestan: args.county,
+          dehestan: args.district,
           limit: args.limit,
         })
       )
+  );
+
+  server.tool(
+    "ipg_mock",
+    "Iranian IPG contract + mock pay/verify (no live gateways). Use official SDKs behind IpgDriver.",
+    {
+      action: z.enum(["guide", "pay", "verify", "drivers"]).optional(),
+      amount: z.number().optional(),
+      callbackUrl: z.string().optional(),
+      authority: z.string().optional(),
+    },
+    async ({ action, amount, callbackUrl, authority }) => {
+      const reg = createIpgRegistry();
+      const act = action ?? "guide";
+      if (act === "guide") return json({ guide: reg.guide() });
+      if (act === "drivers") return json({ drivers: reg.list() });
+      if (act === "pay") {
+        return json(
+          await reg.pay("mock", {
+            amount: amount ?? 10000,
+            callbackUrl: callbackUrl ?? "https://example.com/callback",
+          })
+        );
+      }
+      return json(
+        await reg.verify("mock", { authority: authority ?? "MOCK-1", amount: amount ?? 10000 })
+      );
+    }
   );
 
   server.tool(
@@ -656,7 +791,7 @@ export function createServer() {
     async () =>
       json({
         name: "mahsaagent",
-        version: "0.5.1",
+        version: "0.6.0",
         description: "Persian developer toolkit: RTL, Jalali, locale validation, geo, banks, UI skills",
         tools: TOOL_NAMES,
         toolCount: TOOL_NAMES.length,
@@ -667,6 +802,8 @@ export function createServer() {
           "persian-forms",
           "persian-copy",
           "shadcn-persian",
+          "jalali-datepicker",
+          "iran-forms-kit",
         ],
         resources: [
           "mahsaagent://holidays/solar",
@@ -674,8 +811,17 @@ export function createServer() {
           "mahsaagent://jalali/months",
           "mahsaagent://iran/banks",
         ],
-        exports: ["mahsaagent/zod", "mahsaagent/react", "mahsaagent/moadian", "mahsaagent/address"],
+        exports: [
+          "mahsaagent/zod",
+          "mahsaagent/react",
+          "mahsaagent/react/forms",
+          "mahsaagent/vue",
+          "mahsaagent/moadian",
+          "mahsaagent/ipg",
+          "mahsaagent/address",
+        ],
         transports: ["stdio", "streamable-http"],
+        geo: officialMeta(),
         clientsDoc: "docs/clients.md",
       })
   );

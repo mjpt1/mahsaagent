@@ -8,6 +8,7 @@ import {
   parseJalaliAware,
 } from "./validators.js";
 import { validateLegalIdDetailed } from "../lib/generators.js";
+import { validatePassport, validateCryptoAddress } from "../lib/extraValidate.js";
 
 /** Re-export zod for convenience */
 export { z };
@@ -22,6 +23,8 @@ export const faMessages = {
   legalId: "شناسه ملی نامعتبر است",
   postal: "کد پستی نامعتبر است",
   jalali: "تاریخ شمسی نامعتبر است (قالب: YYYY/MM/DD)",
+  passport: "شماره گذرنامه نامعتبر است",
+  crypto: "آدرس کیف‌پول نامعتبر است",
 } as const;
 
 export type SchemaLocale = "en" | "fa";
@@ -111,6 +114,24 @@ export function createIranSchemas(locale: SchemaLocale = "fa") {
     }
   });
 
+  const passportSchema = z.string().superRefine((val, ctx) => {
+    if (!validatePassport(val).valid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: msg(locale, "Invalid Iranian passport number", faMessages.passport),
+      });
+    }
+  });
+
+  const cryptoAddressSchema = z.string().superRefine((val, ctx) => {
+    if (!validateCryptoAddress(val).valid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: msg(locale, "Invalid crypto wallet address", faMessages.crypto),
+      });
+    }
+  });
+
   const iranContactSchema = z.object({
     nationalId: nationalIdSchema.optional(),
     mobile: mobileSchema.optional(),
@@ -126,6 +147,8 @@ export function createIranSchemas(locale: SchemaLocale = "fa") {
     legalIdSchema,
     postalCodeSchema,
     jalaliDateSchema,
+    passportSchema,
+    cryptoAddressSchema,
     iranContactSchema,
   };
 }
@@ -139,6 +162,8 @@ export const mobileSchema = fa.mobileSchema;
 export const legalIdSchema = fa.legalIdSchema;
 export const postalCodeSchema = fa.postalCodeSchema;
 export const jalaliDateSchema = fa.jalaliDateSchema;
+export const passportSchema = fa.passportSchema;
+export const cryptoAddressSchema = fa.cryptoAddressSchema;
 export const iranContactSchema = fa.iranContactSchema;
 
 /** English-message variants. */

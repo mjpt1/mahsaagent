@@ -122,7 +122,10 @@ function doctor() {
     { name: "skills/persian-forms", path: path.join(root, "skills", "persian-forms", "SKILL.md") },
     { name: "skills/persian-copy", path: path.join(root, "skills", "persian-copy", "SKILL.md") },
     { name: "skills/shadcn-persian", path: path.join(root, "skills", "shadcn-persian", "SKILL.md") },
-    { name: "templates/next-rtl-iran", path: path.join(root, "templates", "next-rtl-iran", "README.md") },
+    { name: "dist/data/official/abadi.json", path: path.join(root, "dist", "data", "official", "abadi.json") },
+    { name: "docs/site", path: path.join(root, "docs", "site", "index.html") },
+    { name: "skills/jalali-datepicker", path: path.join(root, "skills", "jalali-datepicker", "SKILL.md") },
+    { name: "skills/iran-forms-kit", path: path.join(root, "skills", "iran-forms-kit", "SKILL.md") },
     { name: "extension", path: path.join(root, "extension", "extension.js") },
   ];
   console.log(`Mahsaagent doctor (v${pkg.version})\nRoot: ${root}\n`);
