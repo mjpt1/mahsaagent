@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mahsaagent": {
+      "command": "npx",
+      "args": ["-y", "mahsaagent"]
+    }
+  }
+}

@@ -1,0 +1,107 @@
+/**
+ * Mahsaagent RTL injector for Cursor / VS Code-based editors.
+ * Paste into Developer Tools Console (Help → Toggle Developer Tools → Console).
+ * Or run: Mahsaagent: Apply RTL from the extension command palette.
+ */
+(function mahsaagentRtl() {
+  const STYLE_ID = "mahsaagent-rtl-style";
+  const existing = document.getElementById(STYLE_ID);
+  if (existing) existing.remove();
+
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = `
+.markdown-root,
+.anysphere-markdown-container-root,
+.markdown-section,
+.composer-message-group,
+[data-message-kind="assistant"] .markdown-root,
+.composer-human-message,
+.composer-human-message-container,
+.human-message-with-todos-wrapper,
+.aislash-editor-input,
+.aislash-editor-input-readonly,
+.todo-list-container,
+.ui-todo-list,
+.todo-list,
+.ui-todo-item,
+.ui-todo-item__label,
+.ui-todo-item__content,
+#composer-toolbar-section,
+.composer-questionnaire-toolbar,
+.composer-questionnaire-toolbar-header,
+.composer-questionnaire-toolbar-question-label,
+.composer-questionnaire-toolbar-option,
+.composer-questionnaire-toolbar-freeform-input,
+.ui-step-group-header,
+.ui-collapsible-header,
+.composer-tool-former-message,
+.tool-summary-hover-target {
+  direction: rtl !important;
+  text-align: right !important;
+}
+.aislash-editor-placeholder,
+[data-placeholder] {
+  direction: rtl !important;
+  text-align: right !important;
+  right: 15px !important;
+  left: auto !important;
+}
+.markdown-root ul,
+.markdown-root ol,
+.markdown-section ul,
+.markdown-section ol,
+.list-disc,
+.list-inside,
+[data-streamdown="unordered-list"],
+[data-streamdown="ordered-list"],
+.ui-todo-list,
+.todo-list {
+  padding-right: 20px !important;
+  padding-left: 0 !important;
+  direction: rtl !important;
+  text-align: right !important;
+}
+.ui-todo-item__indicator,
+.todo-indicator-container {
+  margin-left: 8px !important;
+  margin-right: 0 !important;
+}
+.markdown-table-container {
+  direction: ltr !important;
+  overflow-x: auto !important;
+  max-width: 100% !important;
+  display: block !important;
+}
+table.markdown-table {
+  direction: rtl !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  border-collapse: collapse !important;
+}
+.markdown-table th,
+.markdown-table td {
+  text-align: right !important;
+}
+code,
+pre,
+.markdown-code-outer-container,
+.cursor-code-block-content,
+.composer-code-block-content,
+.monaco-editor,
+.ui-code-block,
+.ui-default-code,
+.composer-message-codeblock,
+.markdown-root code,
+.markdown-section code {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: plaintext !important;
+}
+`;
+  document.head.appendChild(style);
+  console.log(
+    "%c Mahsaagent RTL applied ",
+    "background:#0f766e;color:#fff;font-size:13px;padding:4px 8px;border-radius:4px;"
+  );
+})();

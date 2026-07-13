@@ -1,0 +1,251 @@
+#!/usr/bin/env node
+import { createRequire } from "node:module";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { startMcpServer, TOOL_NAMES } from "./server.js";
+import { runDemo } from "./demo.js";
+import {
+  todayJalali,
+  formatJalali,
+  formatJalaliLong,
+  parseJalaliString,
+  gregorianToJalali,
+  jalaliToGregorian,
+} from "./lib/jalali.js";
+import {
+  normalizePersian,
+  validateNationalId,
+  validateSheba,
+  validateCard,
+  validateMobile,
+  validatePostalCode,
+  validateLegalId,
+  amountToPersianWords,
+  formatAmountFa,
+  wordsToAmount,
+  listOrFindProvinces,
+  convertDigits,
+  slugifyPersian,
+} from "./lib/text.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(__dirname, "..");
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string; name: string };
+
+function printHelp() {
+  console.log(
+    `
+Mahsaagent v${pkg.version} — Persian developer toolkit
+
+Usage:
+  mahsaagent                         Start tools server (stdio)
+  mahsaagent serve                   Same as above
+  mahsaagent demo                    Live demo
+  mahsaagent doctor                  Check install
+  mahsaagent install-skills [dir]    Copy skills into .cursor/skills
+  mahsaagent tools                   List tool names
+  mahsaagent today [--en]            Today's Jalali date
+  mahsaagent convert <date>          Auto-detect & convert (1405/1/1 or 2026-03-21)
+  mahsaagent normalize <text>        Normalize Persian text
+  mahsaagent digits <text> <dir>     en_to_fa | fa_to_en | ar_to_fa
+  mahsaagent slug <text>             Persian slug
+  mahsaagent validate <kind> <value> national_id|sheba|card|mobile|postal_code|legal_id
+  mahsaagent amount <number>         Format + words
+  mahsaagent words <text>            Persian words → number
+  mahsaagent provinces [query]       List/search provinces
+  mahsaagent version | help
+`.trim()
+  );
+}
+
+function listTools() {
+  console.log("Mahsaagent tool names:\n");
+  for (const t of TOOL_NAMES) console.log(`  • ${t}`);
+  console.log(`\nTotal: ${TOOL_NAMES.length}`);
+}
+
+function doctor() {
+  const checks = [
+    { name: "package.json", path: path.join(root, "package.json") },
+    { name: "dist/server.js", path: path.join(root, "dist", "server.js") },
+    { name: "rtl/inject.js", path: path.join(root, "rtl", "inject.js") },
+    { name: "skills/persian-ui", path: path.join(root, "skills", "persian-ui", "SKILL.md") },
+    { name: "skills/rtl-layout", path: path.join(root, "skills", "rtl-layout", "SKILL.md") },
+    { name: "skills/jalali-dates", path: path.join(root, "skills", "jalali-dates", "SKILL.md") },
+    { name: "skills/persian-forms", path: path.join(root, "skills", "persian-forms", "SKILL.md") },
+    { name: "skills/persian-copy", path: path.join(root, "skills", "persian-copy", "SKILL.md") },
+    { name: "extension", path: path.join(root, "extension", "extension.js") },
+  ];
+  console.log(`Mahsaagent doctor (v${pkg.version})\nRoot: ${root}\n`);
+  let ok = true;
+  for (const c of checks) {
+    const exists = fs.existsSync(c.path);
+    console.log(`${exists ? "✓" : "✗"} ${c.name}`);
+    if (!exists) ok = false;
+  }
+  if (!ok) {
+    console.log("\nRun: npm install && npm run build");
+    process.exitCode = 1;
+  } else {
+    console.log("\nAll good.");
+  }
+}
+
+function installSkills(targetArg?: string) {
+  const target = path.resolve(targetArg ?? path.join(process.cwd(), ".cursor", "skills"));
+  const src = path.join(root, "skills");
+  if (!fs.existsSync(src)) {
+    console.error("skills/ not found");
+    process.exit(1);
+  }
+  fs.mkdirSync(target, { recursive: true });
+  for (const name of fs.readdirSync(src)) {
+    const from = path.join(src, name);
+    const to = path.join(target, name);
+    if (!fs.statSync(from).isDirectory()) continue;
+    fs.cpSync(from, to, { recursive: true });
+    console.log(`✓ ${name} → ${to}`);
+  }
+  console.log(`\nSkills installed into ${target}`);
+}
+
+function cmdToday(args: string[]) {
+  const en = args.includes("--en");
+  const t = todayJalali();
+  const digits = en ? "en" : "fa";
+  console.log(formatJalali(t, { digits }));
+  console.log(formatJalaliLong(t, { digits }));
+}
+
+function cmdConvert(raw?: string) {
+  if (!raw) {
+    console.error("Usage: mahsaagent convert <1405/04/21|2026-03-21>");
+    process.exit(1);
+  }
+  const en = raw.replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
+  const m = en.match(/^(\d{3,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
+  if (!m) {
+    console.error("Unrecognized date");
+    process.exit(1);
+  }
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  // Gregorian years are typically >= 1700; Jalali civil years are ~1300–1500 today
+  const preferGregorian = year >= 1700;
+  if (preferGregorian) {
+    const j = gregorianToJalali(year, month, day);
+    console.log("Gregorian → Jalali:", formatJalali(j, { digits: "fa" }), "/", formatJalaliLong(j));
+    return;
+  }
+  const jalali = parseJalaliString(raw);
+  if (jalali) {
+    const g = jalaliToGregorian(jalali.year, jalali.month, jalali.day);
+    console.log(
+      "Jalali → Gregorian:",
+      `${g.year}-${String(g.month).padStart(2, "0")}-${String(g.day).padStart(2, "0")}`
+    );
+    return;
+  }
+  console.error("Unrecognized or invalid date");
+  process.exit(1);
+}
+
+function cmdValidate(kind?: string, value?: string) {
+  if (!kind || !value) {
+    console.error("Usage: mahsaagent validate <kind> <value>");
+    process.exit(1);
+  }
+  const map: Record<string, (v: string) => unknown> = {
+    national_id: validateNationalId,
+    legal_id: validateLegalId,
+    sheba: validateSheba,
+    card: validateCard,
+    mobile: validateMobile,
+    postal_code: validatePostalCode,
+  };
+  const fn = map[kind];
+  if (!fn) {
+    console.error("kind: national_id|legal_id|sheba|card|mobile|postal_code");
+    process.exit(1);
+  }
+  console.log(JSON.stringify(fn(value), null, 2));
+}
+
+async function main() {
+  const [cmd, ...rest] = process.argv.slice(2);
+
+  if (!cmd || cmd === "serve") {
+    await startMcpServer();
+    return;
+  }
+
+  switch (cmd) {
+    case "demo":
+      await runDemo();
+      break;
+    case "doctor":
+      doctor();
+      break;
+    case "install-skills":
+      installSkills(rest[0]);
+      break;
+    case "tools":
+      listTools();
+      break;
+    case "today":
+      cmdToday(rest);
+      break;
+    case "convert":
+      cmdConvert(rest[0]);
+      break;
+    case "normalize":
+      console.log(normalizePersian(rest.join(" ") || "", { halfSpace: true, digits: "keep" }));
+      break;
+    case "digits": {
+      const dir = rest[1] as "en_to_fa" | "fa_to_en" | "ar_to_fa";
+      if (!rest[0] || !dir) {
+        console.error("Usage: mahsaagent digits <text> <en_to_fa|fa_to_en|ar_to_fa>");
+        process.exit(1);
+      }
+      console.log(convertDigits(rest[0], dir));
+      break;
+    }
+    case "slug":
+      console.log(slugifyPersian(rest.join(" ")));
+      break;
+    case "validate":
+      cmdValidate(rest[0], rest[1]);
+      break;
+    case "amount":
+      console.log(formatAmountFa(rest[0] ?? ""), "/", amountToPersianWords(rest[0] ?? ""));
+      break;
+    case "words":
+      console.log(JSON.stringify(wordsToAmount(rest.join(" ")), null, 2));
+      break;
+    case "provinces":
+      console.log(JSON.stringify(listOrFindProvinces(rest.join(" ") || undefined), null, 2));
+      break;
+    case "version":
+    case "-V":
+    case "--version":
+      console.log(pkg.version);
+      break;
+    case "help":
+    case "-h":
+    case "--help":
+      printHelp();
+      break;
+    default:
+      console.error(`Unknown command: ${cmd}\n`);
+      printHelp();
+      process.exit(1);
+  }
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

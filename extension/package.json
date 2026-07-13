@@ -1,0 +1,31 @@
+{
+  "name": "mahsaagent-rtl",
+  "displayName": "Mahsaagent RTL",
+  "description": "Persian and Arabic RTL for chat and markdown panels. Code stays LTR. Status bar + apply/remove snippets.",
+  "version": "0.3.0",
+  "publisher": "mahsaagent",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other", "Language Packs"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mahsaagent.copyRtlSnippet",
+        "title": "Mahsaagent: Copy RTL snippet"
+      },
+      {
+        "command": "mahsaagent.copyRtlRemove",
+        "title": "Mahsaagent: Copy RTL remove snippet"
+      },
+      {
+        "command": "mahsaagent.showRtlHelp",
+        "title": "Mahsaagent: RTL setup help"
+      }
+    ]
+  },
+  "keywords": ["persian", "farsi", "arabic", "rtl", "cursor"],
+  "license": "MIT"
+}

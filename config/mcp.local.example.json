@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mahsaagent": {
+      "command": "node",
+      "args": ["ABS_PATH/mahsaagent/dist/index.js"]
+    }
+  }
+}
