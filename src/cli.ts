@@ -28,6 +28,20 @@ import {
   convertDigits,
   slugifyPersian,
 } from "./lib/text.js";
+import {
+  searchCities,
+  citiesByProvince,
+  lookupPostalCode,
+  lookupLandline,
+  listProvinceTelPrefixes,
+} from "./lib/geo.js";
+import { detectFinancial, listBanks } from "./lib/financial.js";
+import {
+  isBusinessDay,
+  nextBusinessDay,
+  todayBusinessInfo,
+} from "./lib/businessDays.js";
+import { eventsForDate, eventsForYear } from "./data/events.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -55,6 +69,13 @@ Usage:
   mahsaagent amount <number>         Format + words
   mahsaagent words <text>            Persian words → number
   mahsaagent provinces [query]       List/search provinces
+  mahsaagent cities [query]          Search cities (or --province <name>)
+  mahsaagent postal <code>           Postal code → province prefix
+  mahsaagent landline [phone]        Area code → province (--list for prefixes)
+  mahsaagent financial <value>       Detect card/Sheba + bank
+  mahsaagent banks                   List bank registry
+  mahsaagent business [date]         Business-day check (default: today)
+  mahsaagent events [year|date]      Cultural/religious events
   mahsaagent version | help
 `.trim()
   );
@@ -70,12 +91,15 @@ function doctor() {
   const checks = [
     { name: "package.json", path: path.join(root, "package.json") },
     { name: "dist/server.js", path: path.join(root, "dist", "server.js") },
+    { name: "dist/data/cities.json", path: path.join(root, "dist", "data", "cities.json") },
+    { name: "src/data/cities.json", path: path.join(root, "src", "data", "cities.json") },
     { name: "rtl/inject.js", path: path.join(root, "rtl", "inject.js") },
     { name: "skills/persian-ui", path: path.join(root, "skills", "persian-ui", "SKILL.md") },
     { name: "skills/rtl-layout", path: path.join(root, "skills", "rtl-layout", "SKILL.md") },
     { name: "skills/jalali-dates", path: path.join(root, "skills", "jalali-dates", "SKILL.md") },
     { name: "skills/persian-forms", path: path.join(root, "skills", "persian-forms", "SKILL.md") },
     { name: "skills/persian-copy", path: path.join(root, "skills", "persian-copy", "SKILL.md") },
+    { name: "skills/shadcn-persian", path: path.join(root, "skills", "shadcn-persian", "SKILL.md") },
     { name: "extension", path: path.join(root, "extension", "extension.js") },
   ];
   console.log(`Mahsaagent doctor (v${pkg.version})\nRoot: ${root}\n`);
@@ -174,6 +198,85 @@ function cmdValidate(kind?: string, value?: string) {
   console.log(JSON.stringify(fn(value), null, 2));
 }
 
+function cmdCities(args: string[]) {
+  const provIdx = args.indexOf("--province");
+  if (provIdx >= 0) {
+    const province = args[provIdx + 1];
+    if (!province) {
+      console.error("Usage: mahsaagent cities --province <name>");
+      process.exit(1);
+    }
+    console.log(JSON.stringify(citiesByProvince(province), null, 2));
+    return;
+  }
+  const query = args.join(" ").trim();
+  console.log(JSON.stringify(searchCities(query), null, 2));
+}
+
+function cmdBusiness(raw?: string) {
+  if (!raw) {
+    console.log(JSON.stringify(todayBusinessInfo(), null, 2));
+    return;
+  }
+  const parts = parseJalaliString(raw);
+  if (!parts) {
+    console.error("Usage: mahsaagent business [1405/01/05]");
+    process.exit(1);
+  }
+  console.log(
+    JSON.stringify(
+      {
+        date: parts,
+        isBusinessDay: isBusinessDay(parts),
+        nextBusinessDay: nextBusinessDay(parts),
+      },
+      null,
+      2
+    )
+  );
+}
+
+function cmdEvents(raw?: string) {
+  if (!raw) {
+    const t = todayJalali();
+    console.log(
+      JSON.stringify(
+        {
+          year: t.year,
+          month: t.month,
+          day: t.day,
+          events: eventsForDate(t.year, t.month, t.day),
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+  const asDate = parseJalaliString(raw);
+  if (asDate) {
+    console.log(
+      JSON.stringify(
+        {
+          year: asDate.year,
+          month: asDate.month,
+          day: asDate.day,
+          events: eventsForDate(asDate.year, asDate.month, asDate.day),
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+  const year = Number(raw);
+  if (!Number.isFinite(year)) {
+    console.error("Usage: mahsaagent events [1405|1405/01/01]");
+    process.exit(1);
+  }
+  console.log(JSON.stringify({ year, events: eventsForYear(year) }, null, 2));
+}
+
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
 
@@ -227,6 +330,42 @@ async function main() {
       break;
     case "provinces":
       console.log(JSON.stringify(listOrFindProvinces(rest.join(" ") || undefined), null, 2));
+      break;
+    case "cities":
+      cmdCities(rest);
+      break;
+    case "postal":
+      if (!rest[0]) {
+        console.error("Usage: mahsaagent postal <code>");
+        process.exit(1);
+      }
+      console.log(JSON.stringify(lookupPostalCode(rest[0]), null, 2));
+      break;
+    case "landline":
+      if (rest.includes("--list")) {
+        console.log(JSON.stringify(listProvinceTelPrefixes(), null, 2));
+      } else if (!rest[0]) {
+        console.error("Usage: mahsaagent landline <phone> | --list");
+        process.exit(1);
+      } else {
+        console.log(JSON.stringify(lookupLandline(rest[0]), null, 2));
+      }
+      break;
+    case "financial":
+      if (!rest[0]) {
+        console.error("Usage: mahsaagent financial <card|sheba>");
+        process.exit(1);
+      }
+      console.log(JSON.stringify(detectFinancial(rest.join("")), null, 2));
+      break;
+    case "banks":
+      console.log(JSON.stringify({ banks: listBanks() }, null, 2));
+      break;
+    case "business":
+      cmdBusiness(rest[0]);
+      break;
+    case "events":
+      cmdEvents(rest[0]);
       break;
     case "version":
     case "-V":

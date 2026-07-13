@@ -8,3 +8,10 @@ Thumbs.db
 .vscode-test/
 extension/out/
 .cursor/
+# Raw scrape dumps — keep curated cities.json / provinces-full.json
+src/data/*.raw.json
+!src/data/cities.json
+!src/data/provinces-full.json
+
+# Raw scrape dumps
+*.raw.json

@@ -27,6 +27,9 @@ import {
   batchValidate,
   listOrFindProvinces,
 } from "./lib/text.js";
+import { searchCities, lookupPostalCode, lookupLandline } from "./lib/geo.js";
+import { detectFinancial } from "./lib/financial.js";
+import { todayBusinessInfo } from "./lib/businessDays.js";
 
 function section(title: string) {
   console.log("\n" + "═".repeat(50));
@@ -96,6 +99,28 @@ export async function runDemo() {
     "جستجوی فارس →",
     listOrFindProvinces("فارس").provinces.map((p) => `${p.name} (${p.capital})`)
   );
+
+  section("۸) شهر / کدپستی / تلفن ثابت — geo");
+  console.log(
+    "cities شیراز →",
+    searchCities("شیراز").cities.slice(0, 3).map((c) => `${c.name} (${c.province})`)
+  );
+  console.log("postal 7134567890 →", lookupPostalCode("7134567890"));
+  console.log("landline 07131234567 →", lookupLandline("07131234567"));
+
+  section("۹) مالی و روز کاری — financial / business");
+  const fin = detectFinancial("IR820540102680020817909002");
+  console.log("financial Sheba →", {
+    kind: fin.kind,
+    valid: fin.valid,
+    bank: fin.kind === "unknown" ? null : fin.bank,
+  });
+  const biz = todayBusinessInfo();
+  console.log("business today →", {
+    date: formatJalali(biz.date, { digits: "fa" }),
+    isBusinessDay: biz.isBusinessDay,
+    next: formatJalali(biz.nextBusinessDay, { digits: "fa" }),
+  });
 
   console.log("\n✓ Mahsaagent demo تمام شد.\n");
 }

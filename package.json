@@ -1,7 +1,7 @@
 {
   "name": "mahsaagent",
-  "version": "0.3.0",
-  "description": "Persian developer toolkit: RTL for editors, Jalali locale tools, Iranian validation, and UI skills",
+  "version": "0.4.0",
+  "description": "Persian developer toolkit: RTL for editors, Jalali locale tools, Iranian validation, geo, banks, and UI skills",
   "type": "module",
   "bin": {
     "mahsaagent": "./dist/index.js"
@@ -10,24 +10,28 @@
   "exports": {
     ".": "./dist/server.js",
     "./jalali": "./dist/lib/jalali.js",
-    "./text": "./dist/lib/text.js"
+    "./text": "./dist/lib/text.js",
+    "./zod": "./dist/zod/index.js"
   },
   "files": [
     "dist",
     "rtl",
     "skills",
     "extension",
-    "config"
+    "config",
+    "docs",
+    "templates",
+    "examples"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-data.mjs",
     "dev": "tsc --watch",
     "start": "node dist/index.js serve",
     "demo": "node dist/index.js demo",
     "doctor": "node dist/index.js doctor",
     "tools": "node dist/index.js tools",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/smoke.test.ts src/lib/wordsToNumber.test.ts src/lib/nationalId.test.ts"
+    "test": "tsx --test src/smoke.test.ts src/lib/wordsToNumber.test.ts src/lib/nationalId.test.ts src/lib/geo.test.ts"
   },
   "keywords": [
     "persian",
@@ -39,7 +43,9 @@
     "cursor",
     "vscode",
     "sheba",
-    "national-id"
+    "national-id",
+    "postal-code",
+    "iran-cities"
   ],
   "author": "Mahsaagent",
   "license": "MIT",

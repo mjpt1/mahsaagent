@@ -25,6 +25,7 @@ import { integerToPersianWords } from "./numberWords.js";
 import { persianWordsToInteger } from "./wordsToNumber.js";
 import { findProvinces, PROVINCES } from "../data/provinces.js";
 import { verifyNationalIdChecksum } from "./nationalId.js";
+import { lookupPostalCode } from "./geo.js";
 
 export function normalizePersian(
   text: string,
@@ -138,11 +139,9 @@ export function validateMobile(phone: string) {
   return { valid, detail: valid ? phoneNumberDetail(normalized) : null, normalized };
 }
 
-/** Iranian postal code: 10 digits, first digit not 0. */
+/** Iranian postal code — format + province prefix lookup. */
 export function validatePostalCode(code: string) {
-  const normalized = digitsFaToEn(code).replace(/\D/g, "");
-  const valid = /^[1-9]\d{9}$/.test(normalized);
-  return { valid, normalized };
+  return lookupPostalCode(code);
 }
 
 export function parsePlate(plate: string) {

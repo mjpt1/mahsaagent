@@ -43,6 +43,21 @@ import {
 import { JALALI_MONTHS_FA } from "./data/months.js";
 import { SOLAR_HOLIDAYS } from "./data/holidays.js";
 import { PROVINCES } from "./data/provinces.js";
+import {
+  searchCities,
+  citiesByProvince,
+  lookupPostalCode,
+  lookupLandline,
+  listProvinceTelPrefixes,
+} from "./lib/geo.js";
+import {
+  isBusinessDay,
+  nextBusinessDay,
+  businessDaysBetween,
+  todayBusinessInfo,
+} from "./lib/businessDays.js";
+import { eventsForDate, eventsForYear } from "./data/events.js";
+import { detectFinancial, listBanks } from "./lib/financial.js";
 
 export const TOOL_NAMES = [
   "jalali_today",
@@ -50,6 +65,8 @@ export const TOOL_NAMES = [
   "jalali_shift",
   "jalali_holidays",
   "jalali_month",
+  "jalali_business_day",
+  "jalali_events",
   "persian_normalize",
   "persian_digits",
   "persian_slugify",
@@ -62,14 +79,19 @@ export const TOOL_NAMES = [
   "persian_words_to_number",
   "persian_time_ago",
   "persian_remaining",
+  "persian_financial",
   "iran_provinces",
+  "iran_cities",
+  "iran_postal",
+  "iran_landline",
+  "iran_banks",
   "mahsaagent_about",
 ] as const;
 
 export function createServer() {
   const server = new McpServer({
     name: "mahsaagent",
-    version: "0.3.0",
+    version: "0.4.0",
   });
 
   function json(data: unknown) {
@@ -361,22 +383,135 @@ export function createServer() {
   );
 
   server.tool(
+    "jalali_business_day",
+    "Check business day (not Friday / not official solar holiday), next business day, or count between two Jalali dates.",
+    {
+      mode: z.enum(["check", "next", "between", "today"]).optional(),
+      year: z.number().int().optional(),
+      month: z.number().int().min(1).max(12).optional(),
+      day: z.number().int().min(1).max(31).optional(),
+      otherYear: z.number().int().optional(),
+      otherMonth: z.number().int().optional(),
+      otherDay: z.number().int().optional(),
+    },
+    async (args) => {
+      const mode = args.mode ?? "today";
+      if (mode === "today") return json(todayBusinessInfo());
+      const a = { year: args.year!, month: args.month!, day: args.day! };
+      if (mode === "check") {
+        return json({
+          date: a,
+          isBusinessDay: isBusinessDay(a),
+          nextBusinessDay: nextBusinessDay(a),
+        });
+      }
+      if (mode === "next") return json({ from: a, next: nextBusinessDay(a) });
+      const b = { year: args.otherYear!, month: args.otherMonth!, day: args.otherDay! };
+      return json({ from: a, to: b, businessDays: businessDaysBetween(a, b) });
+    }
+  );
+
+  server.tool(
+    "jalali_events",
+    "Cultural solar + approximate religious events for a Jalali year or a specific day.",
+    {
+      year: z.number().int(),
+      month: z.number().int().min(1).max(12).optional(),
+      day: z.number().int().min(1).max(31).optional(),
+    },
+    async ({ year, month, day }) => {
+      if (month && day) {
+        return json({
+          year,
+          month,
+          day,
+          events: eventsForDate(year, month, day),
+          officialSolar: holidaysForJalaliDate(year, month, day),
+        });
+      }
+      return json({
+        year,
+        events: eventsForYear(year),
+        note: "Religious entries are approximate (±1 day possible).",
+      });
+    }
+  );
+
+  server.tool(
+    "iran_cities",
+    "Search Iranian cities (1195+) or list cities of a province.",
+    {
+      query: z.string().optional(),
+      province: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    async ({ query, province, limit }) => {
+      if (province) return json(citiesByProvince(province, limit ?? 50));
+      return json(searchCities(query ?? "", limit ?? 20));
+    }
+  );
+
+  server.tool(
+    "iran_postal",
+    "Validate Iranian postal code and infer province from prefix.",
+    { code: z.string() },
+    async ({ code }) => json(lookupPostalCode(code))
+  );
+
+  server.tool(
+    "iran_landline",
+    "Lookup Iranian landline area code → province (and list known prefixes).",
+    {
+      phone: z.string().optional(),
+      listPrefixes: z.boolean().optional(),
+    },
+    async ({ phone, listPrefixes }) => {
+      if (listPrefixes) return json({ prefixes: listProvinceTelPrefixes() });
+      if (!phone) return json({ error: "Provide phone or listPrefixes:true" });
+      return json(lookupLandline(phone));
+    }
+  );
+
+  server.tool(
+    "persian_financial",
+    "Detect and validate Iranian bank card or Sheba; attach bank registry info.",
+    { value: z.string() },
+    async ({ value }) => json(detectFinancial(value))
+  );
+
+  server.tool(
+    "iran_banks",
+    "List Iranian banks in the local registry (name, sheba code, card prefixes).",
+    {},
+    async () => json({ banks: listBanks() })
+  );
+
+  server.tool(
     "mahsaagent_about",
     "Mahsaagent version, tool list, and quick capability summary.",
     {},
     async () =>
       json({
         name: "mahsaagent",
-        version: "0.3.0",
-        description: "Persian developer toolkit: RTL, Jalali, locale validation, UI skills",
+        version: "0.4.0",
+        description: "Persian developer toolkit: RTL, Jalali, locale validation, geo, banks, UI skills",
         tools: TOOL_NAMES,
         toolCount: TOOL_NAMES.length,
-        skills: ["persian-ui", "rtl-layout", "jalali-dates", "persian-forms", "persian-copy"],
+        skills: [
+          "persian-ui",
+          "rtl-layout",
+          "jalali-dates",
+          "persian-forms",
+          "persian-copy",
+          "shadcn-persian",
+        ],
         resources: [
           "mahsaagent://holidays/solar",
           "mahsaagent://iran/provinces",
           "mahsaagent://jalali/months",
+          "mahsaagent://iran/banks",
         ],
+        zod: "import from mahsaagent/zod",
       })
   );
 
@@ -424,6 +559,21 @@ export function createServer() {
             null,
             2
           ),
+        },
+      ],
+    })
+  );
+
+  server.resource(
+    "iran-banks",
+    "mahsaagent://iran/banks",
+    { mimeType: "application/json", description: "Iranian bank registry (local)" },
+    async () => ({
+      contents: [
+        {
+          uri: "mahsaagent://iran/banks",
+          mimeType: "application/json",
+          text: JSON.stringify(listBanks(), null, 2),
         },
       ],
     })

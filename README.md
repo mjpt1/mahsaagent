@@ -1,19 +1,20 @@
 # Mahsaagent
 
-جعبه ابزار فارسی برای محیط توسعه — راست‌چین (RTL)، تاریخ شمسی، اعتبارسنجی داده‌های ایرانی، استان‌ها، و مهارت‌های رابط/متن فارسی.
+جعبه ابزار فارسی برای محیط توسعه — راست‌چین (RTL)، تاریخ شمسی، اعتبارسنجی داده‌های ایرانی، شهر/کدپستی/بانک، و مهارت‌های رابط/متن فارسی.
 
-**Mahsaagent** — Persian developer toolkit: RTL panels, Jalali helpers, Iranian validation, provinces, and reusable skills.
+**Mahsaagent** — Persian developer toolkit: RTL panels, Jalali helpers, Iranian validation, geo & banks, and reusable skills.
 
 ---
 
-## v0.3 در یک نگاه
+## v0.4 در یک نگاه
 
 | بخش | جزئیات |
 |-----|--------|
-| **۱۹ ابزار** | جلالی، ماه‌نما، متن، اعتبارسنجی دسته‌ای، پلاک، قبض، مبلغ↔حروف، زمان نسبی، استان‌ها |
-| **۳ Resource** | تعطیلات خورشیدی · استان‌ها · نام ماه‌ها |
-| **CLI کامل** | `today` `convert` `normalize` `validate` `amount` `words` `provinces` … |
-| **۵ Skill** | `persian-ui` · `rtl-layout` · `jalali-dates` · `persian-forms` · `persian-copy` |
+| **۲۶ ابزار** | جلالی + روز کاری + رویدادها، متن، اعتبارسنجی، مالی/بانک، شهرها، کدپستی، تلفن ثابت |
+| **Zod** | `import { nationalIdSchema } from "mahsaagent/zod"` |
+| **Geo** | جستجوی شهر (~۱۱۹۵)، پیشوند کدپستی → استان، پیش‌شماره تلفن ثابت |
+| **CLI** | `cities` `postal` `landline` `financial` `banks` `business` `events` … |
+| **۶ Skill** | پنج skill قبلی + `shadcn-persian` (+ قالب `templates/`) |
 | **RTL** | inject / remove + نوار وضعیت افزونه |
 
 ---
@@ -38,6 +39,13 @@ npx mahsaagent validate national_id 0499370899
 npx mahsaagent amount 1234567
 npx mahsaagent words "یک میلیون و دویست"
 npx mahsaagent provinces فارس
+npx mahsaagent cities شیراز
+npx mahsaagent postal 7134567890
+npx mahsaagent landline 07131234567
+npx mahsaagent financial IR820540102680020817909002
+npx mahsaagent banks
+npx mahsaagent business
+npx mahsaagent events 1405
 npx mahsaagent tools
 npx mahsaagent doctor
 npx mahsaagent install-skills
@@ -71,6 +79,8 @@ npx mahsaagent install-skills
 | `jalali_shift` | ±روز / اختلاف |
 | `jalali_holidays` | تعطیلات ثابت خورشیدی |
 | `jalali_month` | خلاصه/جدول روزهای ماه |
+| `jalali_business_day` | روز کاری / جمعه / تعطیل |
+| `jalali_events` | رویدادهای فرهنگی و تقریبی مذهبی |
 | `persian_normalize` | ی/ک، نیم‌فاصله، تحلیل |
 | `persian_digits` | تبدیل ارقام |
 | `persian_slugify` | اسلاگ فارسی |
@@ -83,10 +93,17 @@ npx mahsaagent install-skills
 | `persian_words_to_number` | حروف → عدد |
 | `persian_time_ago` | زمان نسبی گذشته |
 | `persian_remaining` | زمان باقی‌مانده |
+| `persian_financial` | تشخیص کارت/شبا + بانک |
 | `iran_provinces` | استان و مرکز |
+| `iran_cities` | جستجوی شهر / شهرهای استان |
+| `iran_postal` | کدپستی → استان (پیشوند) |
+| `iran_landline` | پیش‌شماره تلفن ثابت → استان |
+| `iran_banks` | فهرست بانک‌های محلی |
 | `mahsaagent_about` | نسخه و فهرست قابلیت‌ها |
 
 Resources: `mahsaagent://holidays/solar` · `mahsaagent://iran/provinces` · `mahsaagent://jalali/months`
+
+Exports: `mahsaagent` · `mahsaagent/jalali` · `mahsaagent/text` · `mahsaagent/zod`
 
 ---
 
@@ -105,6 +122,8 @@ npm run build
 npm test
 npm run demo
 ```
+
+`build` با `tsc` کامپایل می‌کند و سپس `scripts/copy-data.mjs` فایل‌های `src/data/*.json` را به `dist/data/` کپی می‌کند.
 
 ---
 
