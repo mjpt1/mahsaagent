@@ -59,6 +59,15 @@ const NUMBER_WORDS: Record<string, number> = {
 
 function normalizeNlpInput(raw: string): string {
   let t = digitsFaToEn(raw).trim().toLowerCase();
+  // common EN-keyboard leftovers when user meant Persian keys
+  const keyboard: Record<string, string> = {
+    tvnh: "فردا",
+    hkihv: "امروز",
+    ycdz: "دیروز",
+  };
+  for (const [bad, good] of Object.entries(keyboard)) {
+    if (t === bad || t.includes(bad)) t = t.replace(bad, good);
+  }
   for (const [en, fa] of Object.entries(FINGLISH)) {
     t = t.replace(new RegExp(`\\b${en}\\b`, "gi"), fa);
   }

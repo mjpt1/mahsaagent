@@ -70,4 +70,31 @@ export function enrichBank(bank: BankInfo | null) {
   };
 }
 
+export function validateBankTerminalInput(input: {
+  sheba?: string;
+  account?: string;
+  bankCode?: string;
+}) {
+  if (input.sheba) {
+    const r = shebaToAccount(input.sheba);
+    return {
+      kind: "sheba" as const,
+      ...r,
+      note: r.ok ? "sheba_ok" : r.error,
+    };
+  }
+  if (input.account && input.bankCode) {
+    const r = accountToSheba(input.bankCode, input.account);
+    return {
+      kind: "account" as const,
+      ok: r.ok,
+      sheba: r.sheba,
+      bankCode: input.bankCode,
+      account: input.account,
+      note: r.ok ? "account_built" : r.error,
+    };
+  }
+  return { kind: "unknown" as const, ok: false, note: "provide_sheba_or_account_plus_bankCode" };
+}
+
 export { BANKS, findBankByCard, findBankByShebaCode };

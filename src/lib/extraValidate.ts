@@ -1,7 +1,9 @@
-import { digitsFaToEn } from "@persian-tools/persian-tools";
+import { digitsFaToEn, getPlaceByIranNationalId } from "@persian-tools/persian-tools";
 import { findProvinceFromCoordinate } from "@persian-tools/persian-tools";
 import { POSTAL_PREFIX_TO_PROVINCE } from "../data/postal.js";
-import { lookupPostalCode } from "./geo.js";
+import { POSTAL_PREFIX_TO_CITY, AREA_CODE_TO_CITY } from "../data/placeHints.js";
+import { lookupPostalCode, lookupLandline } from "./geo.js";
+import { verifyNationalIdChecksum } from "./nationalId.js";
 
 /** Iranian passport: letter + 8 digits (common pattern) or 9 alphanumeric. */
 export function validatePassport(raw: string) {
@@ -44,12 +46,52 @@ export function provinceFromGps(latitude: number, longitude: number) {
   }
 }
 
-/** Enrich postal with province (+ optional city hint from prefix when known). */
+/** Enrich postal with province + city hint from prefix. */
 export function postalToPlace(code: string) {
   const base = lookupPostalCode(code);
+  const prefix = base.prefix ?? "";
+  const cityHint = POSTAL_PREFIX_TO_CITY[prefix] ?? null;
   return {
     ...base,
-    cityHint: null as string | null,
-    provinceFromPrefix: base.province ?? POSTAL_PREFIX_TO_PROVINCE[base.prefix ?? ""] ?? null,
+    cityHint,
+    provinceFromPrefix: base.province ?? POSTAL_PREFIX_TO_PROVINCE[prefix] ?? null,
+  };
+}
+
+/** Landline → province + city hint. */
+export function landlineToPlace(phone: string) {
+  const base = lookupLandline(phone);
+  const area = base.areaCode ?? "";
+  const hint = AREA_CODE_TO_CITY[area];
+  return {
+    ...base,
+    cityHint: hint?.city ?? base.capitalHint ?? null,
+    province: hint?.province ?? base.province,
+  };
+}
+
+/** National ID → issuing place (city/province codes). */
+export function nationalIdToPlace(id: string) {
+  const check = verifyNationalIdChecksum(id);
+  if (!check.valid) {
+    return {
+      ok: false as const,
+      normalized: check.normalized,
+      reason: check.reason,
+      detail: check,
+    };
+  }
+  let place: ReturnType<typeof getPlaceByIranNationalId> | null = null;
+  try {
+    place = getPlaceByIranNationalId(check.normalized) ?? null;
+  } catch {
+    place = null;
+  }
+  return {
+    ok: true as const,
+    normalized: check.normalized,
+    place: place
+      ? { city: place.city, province: place.province, codes: place.codes }
+      : null,
   };
 }

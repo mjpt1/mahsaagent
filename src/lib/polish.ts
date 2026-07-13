@@ -26,14 +26,27 @@ export function polishPersian(text: string, options: PolishOptions = {}): string
     t = t.replace(/"([^"]+)"/g, "«$1»").replace(/'/g, "’");
   }
 
+  // Hamzeh / ye
   if (options.hamzeh !== false) {
     t = t.replace(/ه\s*ی\b/g, "ه‌ی").replace(/ۀ/g, "ه‌ی");
   }
 
+  // Ellipsis
+  t = t.replace(/\.{3,}/g, "…");
+
+  // Percent spacing
+  t = t.replace(/(\d)\s*%/g, "$1٪").replace(/%/g, "٪");
+
+  // Remove zero-width extras except ZWNJ
+  t = t.replace(/[\u200b\u200d\ufeff]/g, "");
+
   // Space before punctuation remove; ensure space after
-  t = t.replace(/\s+([،؛.!؟:»])/g, "$1");
-  t = t.replace(/([،؛.!؟:«])(\S)/g, "$1 $2");
+  t = t.replace(/\s+([،؛.!؟:»…])/g, "$1");
+  t = t.replace(/([،؛.!؟:«…])(\S)/g, "$1 $2");
   t = t.replace(/\(\s+/g, "(").replace(/\s+\)/g, ")");
+
+  // "و" spacing around digits ranges
+  t = t.replace(/(\d)\s+تا\s+(\d)/g, "$1 تا $2");
 
   if (options.extraSpaces !== false) {
     t = t.replace(/[ \t]+/g, " ");

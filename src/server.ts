@@ -47,7 +47,6 @@ import {
   searchCities,
   citiesByProvince,
   lookupPostalCode,
-  lookupLandline,
   listProvinceTelPrefixes,
 } from "./lib/geo.js";
 import {
@@ -85,9 +84,12 @@ import {
   validateCryptoAddress,
   provinceFromGps,
   postalToPlace,
+  landlineToPlace,
+  nationalIdToPlace,
 } from "./lib/extraValidate.js";
 import { finglishToPersian, persianToFinglish } from "./lib/finglish.js";
 import { createIpgRegistry } from "./ipg/index.js";
+import { validateBankTerminalInput } from "./lib/shebaConvert.js";
 
 export const TOOL_NAMES = [
   "jalali_today",
@@ -115,6 +117,7 @@ export const TOOL_NAMES = [
   "persian_remaining",
   "persian_financial",
   "persian_sheba_convert",
+  "persian_bank_terminal",
   "persian_generate_test",
   "persian_sms_mock",
   "persian_passport",
@@ -125,6 +128,7 @@ export const TOOL_NAMES = [
   "iran_villages",
   "iran_postal",
   "iran_landline",
+  "iran_national_id_place",
   "iran_gps",
   "iran_banks",
   "iran_geo_meta",
@@ -136,7 +140,7 @@ export const TOOL_NAMES = [
 export function createServer() {
   const server = new McpServer({
     name: "mahsaagent",
-    version: "0.6.0",
+    version: "0.6.1",
   });
 
   function json(data: unknown) {
@@ -530,7 +534,7 @@ export function createServer() {
 
   server.tool(
     "iran_landline",
-    "Lookup Iranian landline area code → province (and list known prefixes).",
+    "Lookup Iranian landline area code → province + city hint (and list known prefixes).",
     {
       phone: z.string().optional(),
       listPrefixes: z.boolean().optional(),
@@ -538,7 +542,7 @@ export function createServer() {
     async ({ phone, listPrefixes }) => {
       if (listPrefixes) return json({ prefixes: listProvinceTelPrefixes() });
       if (!phone) return json({ error: "Provide phone or listPrefixes:true" });
-      return json(lookupLandline(phone));
+      return json(landlineToPlace(phone));
     }
   );
 
@@ -566,6 +570,17 @@ export function createServer() {
       if (!bankCode || !account) return json({ error: "bankCode and account required" });
       return json(accountToSheba(bankCode, account));
     }
+  );
+
+  server.tool(
+    "persian_bank_terminal",
+    "Validate terminal-style bank input: sheba alone, or account+bankCode (builds sheba).",
+    {
+      sheba: z.string().optional(),
+      account: z.string().optional(),
+      bankCode: z.string().optional(),
+    },
+    async (args) => json(validateBankTerminalInput(args))
   );
 
   server.tool(
@@ -686,6 +701,13 @@ export function createServer() {
   );
 
   server.tool(
+    "iran_national_id_place",
+    "Lookup issuing city/province from Iranian national ID prefix codes.",
+    { nationalId: z.string() },
+    async ({ nationalId }) => json(nationalIdToPlace(nationalId))
+  );
+
+  server.tool(
     "iran_geo_meta",
     "Official iran-cities dataset counts (ostan/shahrestan/bakhsh/dehestan/shahr/abadi).",
     {},
@@ -791,7 +813,7 @@ export function createServer() {
     async () =>
       json({
         name: "mahsaagent",
-        version: "0.6.0",
+        version: "0.6.1",
         description: "Persian developer toolkit: RTL, Jalali, locale validation, geo, banks, UI skills",
         tools: TOOL_NAMES,
         toolCount: TOOL_NAMES.length,
@@ -804,6 +826,8 @@ export function createServer() {
           "shadcn-persian",
           "jalali-datepicker",
           "iran-forms-kit",
+          "iran-ipg",
+          "laravel-persian-validation",
         ],
         resources: [
           "mahsaagent://holidays/solar",
