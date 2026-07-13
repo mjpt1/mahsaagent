@@ -497,14 +497,14 @@ export function createServer() {
 
   server.tool(
     "iran_postal",
-    "Validate Iranian postal code and infer province from prefix.",
+    "Validate Iranian postal code and return approximate province/city hints from the prefix (not authoritative).",
     { code: z.string() },
     async ({ code }) => json(postalToPlace(code))
   );
 
   server.tool(
     "iran_cities",
-    "Search Iranian cities (legacy list + official iran-cities shahr).",
+    "Search Iranian cities. Default source is official iran-cities shahr; pass source=legacy|both for the older list.",
     {
       query: z.string().optional(),
       province: z.string().optional(),
@@ -512,7 +512,7 @@ export function createServer() {
       source: z.enum(["legacy", "official", "both"]).optional(),
     },
     async ({ query, province, limit, source }) => {
-      const src = source ?? "both";
+      const src = source ?? "official";
       const lim = limit ?? 20;
       if (province && src !== "official") {
         const legacy = citiesByProvince(province, lim);
@@ -522,19 +522,24 @@ export function createServer() {
           official: searchOfficialCities(province, lim),
         });
       }
+      if (province && src === "official") {
+        return json(searchOfficialCities(province, lim));
+      }
       const q = query ?? "";
       if (src === "legacy") return json(searchCities(q, lim));
-      if (src === "official") return json(searchOfficialCities(q, lim));
-      return json({
-        legacy: searchCities(q, lim),
-        official: searchOfficialCities(q, lim),
-      });
+      if (src === "both") {
+        return json({
+          legacy: searchCities(q, lim),
+          official: searchOfficialCities(q, lim),
+        });
+      }
+      return json(searchOfficialCities(q, lim));
     }
   );
 
   server.tool(
     "iran_landline",
-    "Lookup Iranian landline area code → province + city hint (and list known prefixes).",
+    "Lookup Iranian landline area code → approximate province/city hint (not authoritative).",
     {
       phone: z.string().optional(),
       listPrefixes: z.boolean().optional(),
@@ -681,7 +686,7 @@ export function createServer() {
 
   server.tool(
     "persian_passport",
-    "Validate Iranian passport number format.",
+    "Structural check for Iranian passport numbers (letter + 8 digits). Does not verify issuance.",
     { value: z.string() },
     async ({ value }) => json(validatePassport(value))
   );

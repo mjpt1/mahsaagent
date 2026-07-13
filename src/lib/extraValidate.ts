@@ -5,13 +5,18 @@ import { POSTAL_PREFIX_TO_CITY, AREA_CODE_TO_CITY } from "../data/placeHints.js"
 import { lookupPostalCode, lookupLandline } from "./geo.js";
 import { verifyNationalIdChecksum } from "./nationalId.js";
 
-/** Iranian passport: letter + 8 digits (common pattern) or 9 alphanumeric. */
+/**
+ * Iranian passport format check (structural only — not issuance verification).
+ * Accepted pattern: one Latin letter + 8 digits (e.g. A12345678).
+ */
 export function validatePassport(raw: string) {
   const v = digitsFaToEn(raw).replace(/\s+/g, "").toUpperCase();
-  const ok = /^[A-Z]\d{8}$/.test(v) || /^[A-Z0-9]{8,9}$/.test(v);
+  const ok = /^[A-Z]\d{8}$/.test(v);
   return {
     valid: ok,
     normalized: v,
+    pattern: "letter_plus_8_digits" as const,
+    structuralOnly: true as const,
     reason: ok ? ("ok" as const) : ("format" as const),
   };
 }
@@ -46,7 +51,7 @@ export function provinceFromGps(latitude: number, longitude: number) {
   }
 }
 
-/** Enrich postal with province + city hint from prefix. */
+/** Enrich postal with province + city hint from prefix (approximate). */
 export function postalToPlace(code: string) {
   const base = lookupPostalCode(code);
   const prefix = base.prefix ?? "";
@@ -55,10 +60,12 @@ export function postalToPlace(code: string) {
     ...base,
     cityHint,
     provinceFromPrefix: base.province ?? POSTAL_PREFIX_TO_PROVINCE[prefix] ?? null,
+    approximate: true as const,
+    disclaimer: "Prefix-based hint only — not an authoritative address lookup.",
   };
 }
 
-/** Landline → province + city hint. */
+/** Landline → province + city hint (approximate). */
 export function landlineToPlace(phone: string) {
   const base = lookupLandline(phone);
   const area = base.areaCode ?? "";
@@ -67,6 +74,8 @@ export function landlineToPlace(phone: string) {
     ...base,
     cityHint: hint?.city ?? base.capitalHint ?? null,
     province: hint?.province ?? base.province,
+    approximate: true as const,
+    disclaimer: "Area-code hint only — not an authoritative subscriber lookup.",
   };
 }
 

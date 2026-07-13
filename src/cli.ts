@@ -32,8 +32,6 @@ import {
 import {
   searchCities,
   citiesByProvince,
-  lookupPostalCode,
-  lookupLandline,
   listProvinceTelPrefixes,
 } from "./lib/geo.js";
 import {
@@ -54,6 +52,8 @@ import { polishPersian } from "./lib/polish.js";
 import { convertMoney, formatMoneyFa } from "./lib/currency.js";
 import { generateTestNationalId, generateTestSheba } from "./lib/generators.js";
 import { moadianSetupGuide } from "./moadian/index.js";
+import { searchOfficialCities, officialMeta } from "./lib/officialGeo.js";
+import { postalToPlace, landlineToPlace } from "./lib/extraValidate.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -70,7 +70,8 @@ Usage:
   mahsaagent serve                   Same as above (stdio) — Cursor / Claude Desktop / Codex
   mahsaagent serve-http [--port N]   Streamable HTTP at /mcp — ChatGPT connector / tunnels
   mahsaagent demo                    Live demo
-  mahsaagent doctor                  Check install
+  mahsaagent doctor                  Check install + official geo integrity
+  mahsaagent init-mcp [path]         Write MCP config (default: .cursor/mcp.json)
   mahsaagent install-skills [dir]    Copy skills into .cursor/skills
   mahsaagent tools                   List tool names
   mahsaagent today [--en]            Today's Jalali date
@@ -84,11 +85,11 @@ Usage:
   mahsaagent money <n> [from] [to]   Rial/Toman convert (default toman→toman)
   mahsaagent words <text>            Persian words → number
   mahsaagent provinces [query]       List/search provinces
-  mahsaagent cities [query]          Search cities (or --province <name>)
+  mahsaagent cities [query]          Search official cities (or --legacy / --province)
   mahsaagent address [--province x]  Cascading address / counties / districts
   mahsaagent villages [query]        Rural settlements by district
-  mahsaagent postal <code>           Postal code → province prefix
-  mahsaagent landline [phone]        Area code → province (--list for prefixes)
+  mahsaagent postal <code>           Postal code → province/city hint (approx)
+  mahsaagent landline [phone]        Area code → province hint (--list for prefixes)
   mahsaagent financial <value>       Detect card/Sheba + bank
   mahsaagent sheba <mode> ...        sheba_to_account <sheba> | account_to_sheba <code> <acc>
   mahsaagent gen <national_id|sheba> Generate test IDs
@@ -101,12 +102,6 @@ Usage:
   );
 }
 
-function listTools() {
-  console.log("Mahsaagent tool names:\n");
-  for (const t of TOOL_NAMES) console.log(`  • ${t}`);
-  console.log(`\nTotal: ${TOOL_NAMES.length}`);
-}
-
 function doctor() {
   const checks = [
     { name: "package.json", path: path.join(root, "package.json") },
@@ -114,25 +109,93 @@ function doctor() {
     { name: "dist/data/cities.json", path: path.join(root, "dist", "data", "cities.json") },
     { name: "dist/data/counties.json", path: path.join(root, "dist", "data", "counties.json") },
     { name: "dist/data/official/abadi.json", path: path.join(root, "dist", "data", "official", "abadi.json") },
+    { name: "dist/data/official/meta.json", path: path.join(root, "dist", "data", "official", "meta.json") },
     { name: "docs/site", path: path.join(root, "docs", "site", "index.html") },
     { name: "skills/jalali-datepicker", path: path.join(root, "skills", "jalali-datepicker", "SKILL.md") },
     { name: "skills/iran-forms-kit", path: path.join(root, "skills", "iran-forms-kit", "SKILL.md") },
     { name: "skills/iran-ipg", path: path.join(root, "skills", "iran-ipg", "SKILL.md") },
     { name: "extension", path: path.join(root, "extension", "extension.js") },
+    { name: "THIRD_PARTY_NOTICES.md", path: path.join(root, "THIRD_PARTY_NOTICES.md") },
   ];
-  console.log(`Mahsaagent doctor (v${pkg.version})\nRoot: ${root}\n`);
+  console.log(`Mahsaagent doctor (v${pkg.version})\nRoot: ${root}\nNode: ${process.version}\n`);
   let ok = true;
   for (const c of checks) {
     const exists = fs.existsSync(c.path);
     console.log(`${exists ? "✓" : "✗"} ${c.name}`);
     if (!exists) ok = false;
   }
+
+  try {
+    const meta = officialMeta() as {
+      counts?: { abadi?: number; shahr?: number; ostan?: number };
+      sourceTag?: string;
+      license?: string;
+    };
+    const abadi = meta.counts?.abadi ?? 0;
+    const shahr = meta.counts?.shahr ?? 0;
+    const ostan = meta.counts?.ostan ?? 0;
+    const geoOk = abadi > 50000 && shahr > 1000 && ostan === 31;
+    console.log(
+      `${geoOk ? "✓" : "✗"} official geo counts (ostan=${ostan}, shahr=${shahr}, abadi=${abadi}, tag=${meta.sourceTag ?? "?"})`
+    );
+    if (!geoOk) ok = false;
+    if (meta.license && meta.license !== "MIT") {
+      console.log(`! geo license field: ${meta.license}`);
+    }
+  } catch (err) {
+    console.log(`✗ official geo meta (${err instanceof Error ? err.message : String(err)})`);
+    ok = false;
+  }
+
+  const nid = validateNationalId("0499370899");
+  console.log(`${nid.valid ? "✓" : "✗"} sample national_id checksum`);
+  if (!nid.valid) ok = false;
+
+  const toolsOk = TOOL_NAMES.length >= 40;
+  console.log(`${toolsOk ? "✓" : "✗"} tool registry (${TOOL_NAMES.length})`);
+  if (!toolsOk) ok = false;
+
+  console.log("\nInstall note: prefer git clone + build until the package is published on npm.");
+  console.log("HTTP tip: set MAHSAAGENT_TOKEN before tunneling serve-http.");
+
   if (!ok) {
     console.log("\nRun: npm install && npm run build");
     process.exitCode = 1;
   } else {
     console.log("\nAll good.");
   }
+}
+
+function initMcp(targetArg?: string) {
+  const target = path.resolve(targetArg ?? path.join(process.cwd(), ".cursor", "mcp.json"));
+  const entry = path.join(root, "dist", "index.js");
+  if (!fs.existsSync(entry)) {
+    console.error("dist/index.js missing — run npm run build first");
+    process.exit(1);
+  }
+  const cfg = {
+    mcpServers: {
+      mahsaagent: {
+        command: "node",
+        args: [entry],
+      },
+    },
+  };
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  if (fs.existsSync(target)) {
+    console.error(`Refusing to overwrite existing ${target}`);
+    console.error("Pass a new path, or delete/rename the file first.");
+    process.exit(1);
+  }
+  fs.writeFileSync(target, `${JSON.stringify(cfg, null, 2)}\n`, "utf8");
+  console.log(`Wrote ${target}`);
+  console.log("Restart the MCP client to load Mahsaagent tools.");
+}
+
+function listTools() {
+  console.log("Mahsaagent tool names:\n");
+  for (const t of TOOL_NAMES) console.log(`  • ${t}`);
+  console.log(`\nTotal: ${TOOL_NAMES.length}`);
 }
 
 function installSkills(targetArg?: string) {
@@ -216,18 +279,28 @@ function cmdValidate(kind?: string, value?: string) {
 }
 
 function cmdCities(args: string[]) {
-  const provIdx = args.indexOf("--province");
+  const legacy = args.includes("--legacy");
+  const filtered = args.filter((a) => a !== "--legacy");
+  const provIdx = filtered.indexOf("--province");
   if (provIdx >= 0) {
-    const province = args[provIdx + 1];
+    const province = filtered[provIdx + 1];
     if (!province) {
-      console.error("Usage: mahsaagent cities --province <name>");
+      console.error("Usage: mahsaagent cities --province <name> [--legacy]");
       process.exit(1);
     }
-    console.log(JSON.stringify(citiesByProvince(province), null, 2));
+    if (legacy) {
+      console.log(JSON.stringify(citiesByProvince(province), null, 2));
+    } else {
+      console.log(JSON.stringify(searchOfficialCities(province), null, 2));
+    }
     return;
   }
-  const query = args.join(" ").trim();
-  console.log(JSON.stringify(searchCities(query), null, 2));
+  const query = filtered.join(" ").trim();
+  if (legacy) {
+    console.log(JSON.stringify(searchCities(query), null, 2));
+  } else {
+    console.log(JSON.stringify(searchOfficialCities(query), null, 2));
+  }
 }
 
 function cmdAddress(args: string[]) {
@@ -346,6 +419,9 @@ async function main() {
     case "doctor":
       doctor();
       break;
+    case "init-mcp":
+      initMcp(rest[0]);
+      break;
     case "install-skills":
       installSkills(rest[0]);
       break;
@@ -423,7 +499,7 @@ async function main() {
         console.error("Usage: mahsaagent postal <code>");
         process.exit(1);
       }
-      console.log(JSON.stringify(lookupPostalCode(rest[0]), null, 2));
+      console.log(JSON.stringify(postalToPlace(rest[0]), null, 2));
       break;
     case "landline":
       if (rest.includes("--list")) {
@@ -432,7 +508,7 @@ async function main() {
         console.error("Usage: mahsaagent landline <phone> | --list");
         process.exit(1);
       } else {
-        console.log(JSON.stringify(lookupLandline(rest[0]), null, 2));
+        console.log(JSON.stringify(landlineToPlace(rest[0]), null, 2));
       }
       break;
     case "financial":

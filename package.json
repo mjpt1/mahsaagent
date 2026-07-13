@@ -1,23 +1,64 @@
 {
   "name": "mahsaagent",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Persian developer toolkit: RTL, Jalali, Iranian validation, official geo, banks, MCP tools for multiple clients",
   "type": "module",
   "bin": {
     "mahsaagent": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "types": "./dist/server.d.ts",
   "exports": {
-    ".": "./dist/server.js",
-    "./jalali": "./dist/lib/jalali.js",
-    "./text": "./dist/lib/text.js",
-    "./zod": "./dist/zod/index.js",
-    "./react": "./dist/react/index.js",
-    "./react/forms": "./dist/react/forms-entry.js",
-    "./vue": "./dist/vue/index.js",
-    "./moadian": "./dist/moadian/index.js",
-    "./ipg": "./dist/ipg/index.js",
-    "./address": "./dist/address.js"
+    ".": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
+    "./jalali": {
+      "types": "./dist/lib/jalali.d.ts",
+      "import": "./dist/lib/jalali.js",
+      "default": "./dist/lib/jalali.js"
+    },
+    "./text": {
+      "types": "./dist/lib/text.d.ts",
+      "import": "./dist/lib/text.js",
+      "default": "./dist/lib/text.js"
+    },
+    "./zod": {
+      "types": "./dist/zod/index.d.ts",
+      "import": "./dist/zod/index.js",
+      "default": "./dist/zod/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js",
+      "default": "./dist/react/index.js"
+    },
+    "./react/forms": {
+      "types": "./dist/react/forms-entry.d.ts",
+      "import": "./dist/react/forms-entry.js",
+      "default": "./dist/react/forms-entry.js"
+    },
+    "./vue": {
+      "types": "./dist/vue/index.d.ts",
+      "import": "./dist/vue/index.js",
+      "default": "./dist/vue/index.js"
+    },
+    "./moadian": {
+      "types": "./dist/moadian/index.d.ts",
+      "import": "./dist/moadian/index.js",
+      "default": "./dist/moadian/index.js"
+    },
+    "./ipg": {
+      "types": "./dist/ipg/index.d.ts",
+      "import": "./dist/ipg/index.js",
+      "default": "./dist/ipg/index.js"
+    },
+    "./address": {
+      "types": "./dist/address.d.ts",
+      "import": "./dist/address.js",
+      "default": "./dist/address.js"
+    }
   },
   "files": [
     "dist",
@@ -29,7 +70,9 @@
     "templates",
     "examples",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
     "build": "tsc && node scripts/copy-data.mjs",
@@ -40,8 +83,9 @@
     "doctor": "node dist/index.js doctor",
     "tools": "node dist/index.js tools",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/smoke.test.ts src/lib/wordsToNumber.test.ts src/lib/nationalId.test.ts src/lib/geo.test.ts src/lib/v05.test.ts src/lib/v06.test.ts src/lib/gapfix.test.ts",
-    "prepublishOnly": "npm run build && npm test"
+    "test": "tsx --test src/smoke.test.ts src/lib/wordsToNumber.test.ts src/lib/nationalId.test.ts src/lib/geo.test.ts src/lib/v05.test.ts src/lib/v06.test.ts src/lib/gapFix.test.ts src/lib/geoIntegrity.test.ts src/lib/trust.test.ts",
+    "pack:check": "npm pack --dry-run",
+    "prepublishOnly": "npm run build && npm test && npm run pack:check"
   },
   "publishConfig": {
     "access": "public"

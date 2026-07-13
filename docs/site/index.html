@@ -29,14 +29,18 @@
     <p class="lead">جعبه ابزار فارسی برای ادیتور و اپ — RTL، جلالی، اعتبارسنجی ایرانی، geo رسمی، بانک، MCP چندکلاینته.</p>
 
     <h2>نصب</h2>
-    <pre>npm install mahsaagent
-npm run build   # اگر از سورس کلون کرده‌اید</pre>
+    <pre>git clone https://github.com/mjpt1/mahsaagent.git
+cd mahsaagent
+npm install &amp;&amp; npm run build
+node dist/index.js doctor
+node dist/index.js init-mcp</pre>
+    <p class="lead">تا قبل از publish روی npm از کلون گیت استفاده کنید. نسخهٔ فعلی: ۰٫۶٫۲</p>
 
     <h2>ابزارها</h2>
     <ul>
-      <li>stdio: <code>npx mahsaagent serve</code></li>
-      <li>HTTP: <code>npx mahsaagent serve-http --port 3847</code></li>
-      <li>کلاینت‌ها: <a href="../clients.md">docs/clients.md</a></li>
+      <li>stdio: <code>node dist/index.js serve</code></li>
+      <li>HTTP: <code>node dist/index.js serve-http --port 3847</code> (برای تونل: <code>MAHSAAGENT_TOKEN</code>)</li>
+      <li>کلاینت‌ها: <a href="../clients.md">docs/clients.md</a> · امنیت: <a href="../../SECURITY.md">SECURITY.md</a></li>
     </ul>
 
     <h2>Exports</h2>

@@ -83,6 +83,27 @@ const abadi = abadiRaw.map((r) => [
 
 const ostanById = Object.fromEntries(ostan.map((o) => [o.id, o.name]));
 
+function assertNonEmpty(name, arr) {
+  if (!Array.isArray(arr) || arr.length === 0) {
+    throw new Error(`Import failed: ${name} is empty`);
+  }
+}
+
+assertNonEmpty("ostan", ostan);
+assertNonEmpty("shahrestan", shahrestan);
+assertNonEmpty("bakhsh", bakhsh);
+assertNonEmpty("dehestan", dehestan);
+assertNonEmpty("shahr", shahr);
+assertNonEmpty("abadi", abadi);
+
+const ostanIds = new Set(ostan.map((o) => o.id));
+const badCounty = shahrestan.find((s) => !ostanIds.has(s.ostanId));
+if (badCounty) {
+  throw new Error(`Import failed: shahrestan ${badCounty.id} has unknown ostanId ${badCounty.ostanId}`);
+}
+
+const importedAt = new Date().toISOString().slice(0, 10);
+
 fs.writeFileSync(path.join(dest, "ostan.json"), JSON.stringify(ostan));
 fs.writeFileSync(path.join(dest, "shahrestan.json"), JSON.stringify(shahrestan));
 fs.writeFileSync(path.join(dest, "bakhsh.json"), JSON.stringify(bakhsh));
@@ -93,8 +114,13 @@ fs.writeFileSync(
   path.join(dest, "meta.json"),
   JSON.stringify(
     {
-      source: "ahmadazizi/iran-cities v3.0",
-      license: "See upstream LICENSE",
+      source: "ahmadazizi/iran-cities",
+      sourceUrl: "https://github.com/ahmadazizi/iran-cities",
+      sourceTag: "v3.0",
+      sourceReleaseUrl: "https://github.com/ahmadazizi/iran-cities/releases/tag/v3.0",
+      importedAt,
+      license: "MIT",
+      licenseNote: "Upstream MIT; see THIRD_PARTY_NOTICES.md and docs/GEO-SOURCE.md",
       counts: {
         ostan: ostan.length,
         shahrestan: shahrestan.length,

@@ -71,23 +71,28 @@ args = ["ABS_PATH/mahsaagent/dist/index.js"]
 ### الف) سرور HTTP محلی
 
 ```bash
-npx mahsaagent serve-http --port 3847
-# یا با توکن:
-# set MAHSAAGENT_TOKEN=secret
-# npx mahsaagent serve-http --port 3847
+# بعد از build محلی:
+node dist/index.js serve-http --host 127.0.0.1 --port 3847
+
+# توصیه برای هر تونل/دسترسی غیرمحلی:
+# Windows PowerShell:
+#   $env:MAHSAAGENT_TOKEN="secret"
+# Unix:
+#   export MAHSAAGENT_TOKEN=secret
+node dist/index.js serve-http --port 3847
 ```
 
 آدرس محلی: `http://127.0.0.1:3847/mcp`
 
+**امنیت:** bind غیر از loopback بدون `MAHSAAGENT_TOKEN` رد می‌شود مگر `MAHSAAGENT_ALLOW_INSECURE=1`. جزئیات: [`SECURITY.md`](../SECURITY.md).
+
 ### ب) تونل HTTPS (برای connector وب)
 
-با cloudflared / ngrok / مشابه، پورت را عمومی کن، مثلاً:
+قبل از تونل حتماً توکن بگذار. سپس با cloudflared / ngrok پورت را عمومی کن، مثلاً:
 
 `https://YOUR-TUNNEL.example/mcp`
 
-سپس در ChatGPT: Settings → Connectors → Developer mode → Add custom connector → همان URL.
-
-اگر `MAHSAAGENT_TOKEN` گذاشتی، در connector همان مقدار را به‌عنوان Bearer بفرست.
+سپس در ChatGPT: Settings → Connectors → Developer mode → Add custom connector → همان URL + Bearer token.
 
 ---
 

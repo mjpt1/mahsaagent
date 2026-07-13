@@ -114,11 +114,14 @@ export function validateNationalId(id: string) {
 
 export function validateLegalId(id: string) {
   const detail = validateLegalIdDetailed(id);
-  const legacy = Boolean(verifyIranianLegalId(detail.normalized));
+  const legacyValid = Boolean(verifyIranianLegalId(detail.normalized));
+  // Trust our checksum only — never OR with the library (avoids false positives).
   return {
-    valid: detail.valid || legacy,
+    valid: detail.valid,
     normalized: detail.normalized,
     detail,
+    legacyValid,
+    legacyAgrees: legacyValid === detail.valid,
   };
 }
 

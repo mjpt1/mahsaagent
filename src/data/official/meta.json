@@ -1,6 +1,11 @@
 {
-  "source": "ahmadazizi/iran-cities v3.0",
-  "license": "See upstream LICENSE",
+  "source": "ahmadazizi/iran-cities",
+  "sourceUrl": "https://github.com/ahmadazizi/iran-cities",
+  "sourceTag": "v3.0",
+  "sourceReleaseUrl": "https://github.com/ahmadazizi/iran-cities/releases/tag/v3.0",
+  "importedAt": "2026-07-13",
+  "license": "MIT",
+  "licenseNote": "Upstream MIT; see THIRD_PARTY_NOTICES.md and docs/GEO-SOURCE.md",
   "counts": {
     "ostan": 31,
     "shahrestan": 448,

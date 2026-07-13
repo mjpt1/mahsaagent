@@ -1,6 +1,10 @@
 /**
  * Minimal example: Zod schemas from Mahsaagent for Iranian forms.
- * Run from repo root after build: npx tsx examples/basic-form/validate.ts
+ * From repo root after build:
+ *   npx tsx examples/basic-form/validate.ts
+ *
+ * After npm publish, switch imports to:
+ *   import { ... } from "mahsaagent/zod";
  */
 import {
   nationalIdSchema,
@@ -8,7 +12,7 @@ import {
   shebaSchema,
   postalCodeSchema,
   jalaliDateSchema,
-} from "../../src/zod/index.ts";
+} from "../../dist/zod/index.js";
 
 const samples = {
   nationalId: "1829657127",

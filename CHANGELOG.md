@@ -2,6 +2,26 @@
 
 All notable changes to Mahsaagent are documented here.
 
+## [0.6.2] — 2026-07-13
+
+### Security / trust
+- `serve-http` requires `MAHSAAGENT_TOKEN` on non-loopback (or explicit insecure override)
+- Concurrent request limit + clearer 401 hints; CORS only when auth/token policy allows
+- Legal ID no longer ORs with legacy library (false-positive fix)
+- Passport validation tightened to letter + 8 digits; structural-only labeling
+- Place hint APIs/tools marked approximate
+
+### Data quality
+- Official geo meta provenance (tag, URL, import date, MIT notice)
+- FK integrity tests for official JSON; import script asserts non-empty + county FK
+- `iran_cities` / CLI cities default to **official** iran-cities
+
+### Developer experience
+- Stronger `doctor` (geo counts, sample validate, tool registry)
+- `init-mcp` writes local MCP config
+- Package `exports` include `types`; CI typecheck + Node 18/20 + pack dry-run
+- CONTRIBUTING, SECURITY, THIRD_PARTY_NOTICES; honest install docs until npm publish
+
 ## [0.6.1] — 2026-07-13
 
 ### Added

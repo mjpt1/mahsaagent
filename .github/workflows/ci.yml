@@ -9,7 +9,11 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,11 +21,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ matrix.node-version }}
           cache: npm
 
       - name: Install
         run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Build
         run: npm run build
@@ -31,3 +38,7 @@ jobs:
 
       - name: Doctor
         run: node dist/index.js doctor
+
+      - name: Pack dry-run
+        if: matrix.node-version == 20
+        run: npm run pack:check

@@ -3,7 +3,7 @@
 [![CI](https://github.com/mjpt1/mahsaagent/actions/workflows/ci.yml/badge.svg)](https://github.com/mjpt1/mahsaagent/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
-[![npm](https://img.shields.io/npm/v/mahsaagent.svg)](https://www.npmjs.com/package/mahsaagent)
+[![version](https://img.shields.io/badge/version-0.6.2-blue.svg)](CHANGELOG.md)
 
 **جعبه ابزار فارسی برای توسعه‌دهندگان** — راست‌چین (RTL)، تاریخ شمسی، اعتبارسنجی داده‌های ایرانی، تقسیمات کشوری رسمی، بانک/شبا، و سرور ابزار استاندارد (MCP) برای چند کلاینت.
 
@@ -27,50 +27,44 @@
 | **ادیتور** | افزونه RTL، مهارت‌های Cursor، قالب Next |
 | **سرور ابزار** | stdio + HTTP برای Cursor / Claude Desktop / ChatGPT (Codex) |
 
-نسخهٔ فعلی: **0.6.1** · **۴۳ ابزار**
+نسخهٔ فعلی: **0.6.2** · **۴۳ ابزار**
 
 ---
 
 ## نصب
+
+فعلاً از git (پکیج هنوز روی npm منتشر نشده):
 
 ```bash
 git clone https://github.com/mjpt1/mahsaagent.git
 cd mahsaagent
 npm install
 npm run build
+node dist/index.js doctor
+node dist/index.js init-mcp   # می‌نویسد .cursor/mcp.json
 ```
 
-از npm (بعد از publish):
-
-```bash
-npm install mahsaagent
-```
-
-بررسی سلامت نصب:
-
-```bash
-npx mahsaagent doctor
-npx mahsaagent demo
-```
+بعد از publish روی npm: `npm install mahsaagent`.
 
 ---
 
 ## CLI
 
 ```bash
-npx mahsaagent                  # سرور ابزار (stdio)
-npx mahsaagent serve-http       # سرور HTTP روی /mcp (پیش‌فرض پورت 3847)
-npx mahsaagent tools            # فهرست ابزارها
-npx mahsaagent today
-npx mahsaagent convert 2026-03-21
-npx mahsaagent polish "سلام ,دنیا?"
-npx mahsaagent validate national_id 0499370899
-npx mahsaagent sheba sheba_to_account IR820540102680020817909002
-npx mahsaagent address --province تهران
-npx mahsaagent villages --province فارس
-npx mahsaagent money 10000 toman rial
-npx mahsaagent moadian
-npx mahsaagent install-skills   # کپی skillها به .cursor/skills
+node dist/index.js                  # سرور ابزار (stdio)
+node dist/index.js serve-http       # HTTP روی /mcp — برای تونل حتماً MAHSAAGENT_TOKEN
+node dist/index.js tools
+node dist/index.js today
+node dist/index.js convert 2026-03-21
+node dist/index.js polish "سلام ,دنیا?"
+node dist/index.js validate national_id 0499370899
+node dist/index.js sheba sheba_to_account IR820540102680020817909002
+node dist/index.js cities شیراز     # پیش‌فرض: دادهٔ رسمی
+node dist/index.js address --province تهران
+node dist/index.js villages --province فارس
+node dist/index.js money 10000 toman rial
+node dist/index.js moadian
+node dist/index.js install-skills
 ```
 
 ---
@@ -103,11 +97,11 @@ npx mahsaagent install-skills   # کپی skillها به .cursor/skills
 ### HTTP (remote / تونل)
 
 ```bash
-npx mahsaagent serve-http --host 127.0.0.1 --port 3847
-# اختیاری: MAHSAAGENT_TOKEN=secret
+# loopback بدون توکن مجاز است؛ برای تونل/هاست عمومی توکن اجباری است
+node dist/index.js serve-http --host 127.0.0.1 --port 3847
 ```
 
-Endpoint: `http://127.0.0.1:3847/mcp` — برای connector وب معمولاً به تونل HTTPS نیاز است.
+Endpoint: `http://127.0.0.1:3847/mcp` — جزئیات امنیتی: [`SECURITY.md`](SECURITY.md).
 
 ---
 
@@ -146,7 +140,7 @@ Endpoint: `http://127.0.0.1:3847/mcp` — برای connector وب معمولاً
 |--------|-----|
 | `iran_provinces` / `iran_cities` / `iran_address` | استان و شهر و آبشار آدرس |
 | `iran_villages` | جستجوی آبادی (دادهٔ رسمی) |
-| `iran_postal` / `iran_landline` | کدپستی و تلفن ثابت → استان/شهر |
+| `iran_postal` / `iran_landline` | کدپستی و تلفن ثابت → **حدس تقریبی** استان/شهر |
 | `iran_national_id_place` | محل صدور از کدملی |
 | `iran_gps` | مختصات → استان |
 | `iran_banks` / `iran_geo_meta` | بانک‌ها و آمار geo |
@@ -191,7 +185,7 @@ import { buildMoadianInvoice } from "mahsaagent/moadian";
 ### Skills (برای Cursor)
 
 ```bash
-npx mahsaagent install-skills
+node dist/index.js install-skills
 ```
 
 | skill | موضوع |
@@ -225,9 +219,9 @@ npm run dev
 
 ## دادهٔ جغرافیایی
 
-تقسیمات کشوری از مجموعهٔ [ahmadazizi/iran-cities](https://github.com/ahmadazizi/iran-cities) نسخهٔ v3 تبدیل شده‌اند.
+تقسیمات کشوری از مجموعهٔ [ahmadazizi/iran-cities](https://github.com/ahmadazizi/iran-cities) نسخهٔ **v3.0** تبدیل شده‌اند (MIT — [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)).
 
-جزئیات: [`docs/GEO-SOURCE.md`](docs/GEO-SOURCE.md)
+پیش‌فرض جستجوی شهر: **official**. جزئیات: [`docs/GEO-SOURCE.md`](docs/GEO-SOURCE.md)
 
 بازسازی از CSV:
 
@@ -246,15 +240,16 @@ npm run build      # tsc + کپی JSON به dist/data
 npm test
 npm run demo
 npm run typecheck
+npm run pack:check
 ```
 
-داک استاتیک محلی: [`docs/site/index.html`](docs/site/index.html)
+راهنما: [`CONTRIBUTING.md`](CONTRIBUTING.md) · نمای محصول: [`docs/site/index.html`](docs/site/index.html)
 
 ---
 
 ## مجوز
 
-[MIT](LICENSE)
+[MIT](LICENSE) · اعلان‌های شخص ثالث: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
 
 ---
 

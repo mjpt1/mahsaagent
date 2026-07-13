@@ -2,7 +2,7 @@
   "name": "mahsaagent-rtl",
   "displayName": "Mahsaagent",
   "description": "Persian RTL, Jalali insert, polish selection, and Iranian field validation helpers for the editor.",
-  "version": "0.5.0",
+  "version": "0.6.2",
   "publisher": "mahsaagent",
   "engines": {
     "vscode": "^1.85.0"
