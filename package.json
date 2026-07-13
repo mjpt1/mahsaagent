@@ -1,7 +1,7 @@
 {
   "name": "mahsaagent",
-  "version": "0.5.0",
-  "description": "Persian developer toolkit: RTL for editors, Jalali locale tools, Iranian validation, geo, banks, and UI skills",
+  "version": "0.5.1",
+  "description": "Persian developer toolkit: RTL for editors, Jalali locale tools, Iranian validation, geo, banks, and UI skills. MCP tools server for multiple clients.",
   "type": "module",
   "bin": {
     "mahsaagent": "./dist/index.js"

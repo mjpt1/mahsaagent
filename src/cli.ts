@@ -4,6 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { startMcpServer, TOOL_NAMES } from "./server.js";
+import { startHttpMcpServer } from "./httpServer.js";
 import { runDemo } from "./demo.js";
 import {
   todayJalali,
@@ -66,7 +67,8 @@ Mahsaagent v${pkg.version} — Persian developer toolkit
 
 Usage:
   mahsaagent                         Start tools server (stdio)
-  mahsaagent serve                   Same as above
+  mahsaagent serve                   Same as above (stdio) — Cursor / Claude Desktop / Codex
+  mahsaagent serve-http [--port N]   Streamable HTTP at /mcp — ChatGPT connector / tunnels
   mahsaagent demo                    Live demo
   mahsaagent doctor                  Check install
   mahsaagent install-skills [dir]    Copy skills into .cursor/skills
@@ -330,6 +332,15 @@ async function main() {
 
   if (!cmd || cmd === "serve") {
     await startMcpServer();
+    return;
+  }
+
+  if (cmd === "serve-http" || cmd === "http") {
+    const portIdx = rest.indexOf("--port");
+    const hostIdx = rest.indexOf("--host");
+    const port = portIdx >= 0 ? Number(rest[portIdx + 1]) : undefined;
+    const host = hostIdx >= 0 ? rest[hostIdx + 1] : undefined;
+    await startHttpMcpServer({ host, port });
     return;
   }
 

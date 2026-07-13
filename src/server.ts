@@ -110,7 +110,7 @@ export const TOOL_NAMES = [
 export function createServer() {
   const server = new McpServer({
     name: "mahsaagent",
-    version: "0.5.0",
+    version: "0.5.1",
   });
 
   function json(data: unknown) {
@@ -656,7 +656,7 @@ export function createServer() {
     async () =>
       json({
         name: "mahsaagent",
-        version: "0.5.0",
+        version: "0.5.1",
         description: "Persian developer toolkit: RTL, Jalali, locale validation, geo, banks, UI skills",
         tools: TOOL_NAMES,
         toolCount: TOOL_NAMES.length,
@@ -674,7 +674,9 @@ export function createServer() {
           "mahsaagent://jalali/months",
           "mahsaagent://iran/banks",
         ],
-        exports: ["mahsaagent/zod", "mahsaagent/react", "mahsaagent/moadian"],
+        exports: ["mahsaagent/zod", "mahsaagent/react", "mahsaagent/moadian", "mahsaagent/address"],
+        transports: ["stdio", "streamable-http"],
+        clientsDoc: "docs/clients.md",
       })
   );
 

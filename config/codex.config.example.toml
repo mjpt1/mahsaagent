@@ -1,0 +1,11 @@
+# Paste into ~/.codex/config.toml (or project .codex/config.toml)
+# Replace ABS_PATH with your local mahsaagent clone.
+
+[mcp_servers.mahsaagent]
+command = "node"
+args = ["ABS_PATH/mahsaagent/dist/index.js"]
+
+# Optional: remote HTTP instead of stdio
+# [mcp_servers.mahsaagent_http]
+# url = "http://127.0.0.1:3847/mcp"
+# bearer_token_env_var = "MAHSAAGENT_TOKEN"

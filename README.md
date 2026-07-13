@@ -46,7 +46,11 @@ npx mahsaagent tools
 npx mahsaagent doctor
 ```
 
-### اتصال به Cursor
+### اتصال به کلاینت‌ها (Cursor / Claude / ChatGPT)
+
+راهنمای کامل: [`docs/clients.md`](docs/clients.md)
+
+**stdio** (محلی — Cursor، Claude Desktop، ChatGPT Desktop / Codex):
 
 ```json
 {
@@ -59,7 +63,14 @@ npx mahsaagent doctor
 }
 ```
 
-نمونه: [`config/mcp.local.example.json`](config/mcp.local.example.json)
+**HTTP** (برای connector وب ChatGPT یا تونل HTTPS):
+
+```bash
+npx mahsaagent serve-http --port 3847
+# endpoint: http://127.0.0.1:3847/mcp
+```
+
+نمونه‌ها: [`config/mcp.local.example.json`](config/mcp.local.example.json) · [`config/claude_desktop.example.json`](config/claude_desktop.example.json) · [`config/codex.config.example.toml`](config/codex.config.example.toml)
 
 ---
 
