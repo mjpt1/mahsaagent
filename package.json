@@ -1,6 +1,6 @@
 {
   "name": "mahsaagent",
-  "version": "0.6.2",
+  "version": "0.8.1",
   "description": "Persian developer toolkit: RTL, Jalali, Iranian validation, official geo, banks, MCP tools for multiple clients",
   "type": "module",
   "bin": {
@@ -58,6 +58,11 @@
       "types": "./dist/address.d.ts",
       "import": "./dist/address.js",
       "default": "./dist/address.js"
+    },
+    "./forms": {
+      "types": "./dist/lib/formBuilder.d.ts",
+      "import": "./dist/lib/formBuilder.js",
+      "default": "./dist/lib/formBuilder.js"
     }
   },
   "files": [
@@ -83,7 +88,7 @@
     "doctor": "node dist/index.js doctor",
     "tools": "node dist/index.js tools",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/smoke.test.ts src/lib/wordsToNumber.test.ts src/lib/nationalId.test.ts src/lib/geo.test.ts src/lib/v05.test.ts src/lib/v06.test.ts src/lib/gapFix.test.ts src/lib/geoIntegrity.test.ts src/lib/trust.test.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "pack:check": "npm pack --dry-run",
     "prepublishOnly": "npm run build && npm test && npm run pack:check"
   },

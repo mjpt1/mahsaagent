@@ -3,7 +3,7 @@
 [![CI](https://github.com/mjpt1/mahsaagent/actions/workflows/ci.yml/badge.svg)](https://github.com/mjpt1/mahsaagent/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
-[![version](https://img.shields.io/badge/version-0.6.2-blue.svg)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-0.8.1-blue.svg)](CHANGELOG.md)
 
 **جعبه ابزار فارسی برای توسعه‌دهندگان** — راست‌چین (RTL)، تاریخ شمسی، اعتبارسنجی داده‌های ایرانی، تقسیمات کشوری رسمی، بانک/شبا، و سرور ابزار استاندارد (MCP) برای چند کلاینت.
 
@@ -27,7 +27,7 @@
 | **ادیتور** | افزونه RTL، مهارت‌های Cursor، قالب Next |
 | **سرور ابزار** | stdio + HTTP برای Cursor / Claude Desktop / ChatGPT (Codex) |
 
-نسخهٔ فعلی: **0.6.2** · **۴۳ ابزار**
+نسخهٔ فعلی: **0.8.1** · **۶۴ ابزار**
 
 ---
 
@@ -141,6 +141,14 @@ Endpoint: `http://127.0.0.1:3847/mcp` — جزئیات امنیتی: [`SECURITY.
 | `iran_provinces` / `iran_cities` / `iran_address` | استان و شهر و آبشار آدرس |
 | `iran_villages` | جستجوی آبادی (دادهٔ رسمی) |
 | `iran_postal` / `iran_landline` | کدپستی و تلفن ثابت → **حدس تقریبی** استان/شهر |
+| `iran_address_complete` | تکمیل هوشمند فرم آدرس |
+| `jalali_schedule_parse` | «پس‌فردا ساعت ۳» → تاریخ/ساعت |
+| `local_doc_index` / `local_doc_search` / `codebase_search` | جست‌وجوی آفلاین داک و کد (+PDF) |
+| `dev_error_explain` / `stacktrace_explain_fa` | توضیح خطا به فارسی |
+| `moadian_validate` / `moadian_explain` / sample | مودیان آفلاین |
+| `ipg_advise` / `ipg_simulate` / `bank_form_sync` | درگاه و فرم بانکی |
+| `persian_form_schema` / `schema_labels_fa` / `iran_business_rules` | فرم و قوانین کسب‌وکار |
+| `rtl_lint_snippet` / `rtl_fix_snippet` | لینت و فیکس RTL |
 | `iran_national_id_place` | محل صدور از کدملی |
 | `iran_gps` | مختصات → استان |
 | `iran_banks` / `iran_geo_meta` | بانک‌ها و آمار geo |
@@ -173,8 +181,8 @@ import { buildMoadianInvoice } from "mahsaagent/moadian";
 | `mahsaagent/react` | هوک‌های جلالی، بانک، پول، polish |
 | `mahsaagent/react/forms` | `useBankSync` و پل شبا↔حساب |
 | `mahsaagent/vue` | composableهای Vue 3 |
-| `mahsaagent/ipg` | قرارداد IPG + mock |
-| `mahsaagent/moadian` | stub مودیان |
+| `mahsaagent/forms` | presets فرم + Zod runnable |
+| `mahsaagent/ipg` · `mahsaagent/moadian` | پرداخت / مودیان (آفلاین) |
 | `mahsaagent/address` | آبشار آدرس (legacy + رسمی) |
 | `mahsaagent/jalali` · `mahsaagent/text` | هستهٔ تاریخ و متن |
 

@@ -31,19 +31,20 @@ node dist/index.js init-mcp
 |--------|---------|
 | `mahsaagent` | Tools server exports |
 | `mahsaagent/zod` | Zod schemas for forms |
+| `mahsaagent/forms` | Form presets + `validateFormValues` |
 | `mahsaagent/jalali` | Jalali helpers |
 | `mahsaagent/text` | Normalize / validate |
 | `mahsaagent/address` | Official address cascade |
 | `mahsaagent/react` · `mahsaagent/react/forms` | React hooks |
 | `mahsaagent/vue` | Vue composables |
-| `mahsaagent/ipg` · `mahsaagent/moadian` | Payment / tax stubs |
+| `mahsaagent/ipg` · `mahsaagent/moadian` | Payment / tax offline helpers |
 
-## Current surface (0.6.2)
+## Current surface (0.8.1)
 
-- **۴۳ ابزار** MCP (stdio + HTTP)
-- Official geo (~۹۸k آبادی) as default for `iran_cities`
-- Place hints marked approximate; passport is structural-only
-- `serve-http` refuses non-loopback without `MAHSAAGENT_TOKEN`
+- **۶۴ ابزار** MCP (stdio + HTTP)
+- Phase 1: offline doc/code search, errors, regex, RTL lint/fix, test data
+- Phase 2: address complete, schedule NLP, Moadian+, IPG advisor, bank sync, form schema, business rules
+- Live Moadian/IPG submit still intentionally disabled (local-first)
 
 ## Branding
 

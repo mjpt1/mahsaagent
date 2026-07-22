@@ -44,25 +44,70 @@ export interface IpgDriver {
   verify(req: IpgVerifyRequest): Promise<IpgVerifyResult>;
 }
 
-/** In-memory mock for tests and local demos. */
+/** In-memory mock with amount-binding (like production verify checks). */
 export class MockIpgDriver implements IpgDriver {
   readonly name = "mock";
-  public paid: IpgPayRequest[] = [];
+  public paid: Array<IpgPayRequest & { authority: string }> = [];
 
   async pay(req: IpgPayRequest): Promise<IpgPayResult> {
-    if (!req.amount || req.amount <= 0) return { ok: false, error: "invalid_amount" };
-    const authority = `MOCK-${this.paid.length + 1}`;
-    this.paid.push(req);
+    if (!req.amount || req.amount <= 0) {
+      return {
+        ok: false,
+        error: "invalid_amount",
+        raw: { code: -1, message: "Amount must be positive" },
+      };
+    }
+    if (!req.callbackUrl) {
+      return { ok: false, error: "missing_callback", raw: { code: -2, message: "callbackUrl required" } };
+    }
+    const authority = `MOCK-${Date.now().toString(36)}-${this.paid.length + 1}`;
+    this.paid.push({ ...req, authority });
     return {
       ok: true,
       authority,
       redirectUrl: `${req.callbackUrl}?Authority=${authority}&Status=OK`,
+      raw: {
+        Status: 100,
+        Authority: authority,
+        amount: req.amount,
+        currency: req.currency ?? "IRR",
+        orderId: req.orderId ?? null,
+      },
     };
   }
 
   async verify(req: IpgVerifyRequest): Promise<IpgVerifyResult> {
-    if (!req.authority.startsWith("MOCK-")) return { ok: false, error: "unknown_authority" };
-    return { ok: true, refId: `REF-${req.authority}`, cardPan: "6037-****-****-1234" };
+    const found = this.paid.find((p) => p.authority === req.authority);
+    if (!found) {
+      return {
+        ok: false,
+        error: "unknown_authority",
+        raw: { Status: -51, message: "Authority not found" },
+      };
+    }
+    if (Number(found.amount) !== Number(req.amount)) {
+      return {
+        ok: false,
+        error: "amount_mismatch",
+        raw: {
+          Status: -54,
+          expected: found.amount,
+          received: req.amount,
+          message: "Paid amount does not match verify amount",
+        },
+      };
+    }
+    return {
+      ok: true,
+      refId: `REF-${req.authority}`,
+      cardPan: "6037-****-****-1234",
+      raw: {
+        Status: 100,
+        RefID: `REF-${req.authority}`,
+        card_pan: "6037-****-****-1234",
+        amount: req.amount,
+      },
+    };
   }
 }
 
@@ -86,7 +131,9 @@ export function createIpgRegistry(drivers: IpgDriver[] = [new MockIpgDriver()]) 
       return [
         "IPG contract: implement IpgDriver for ZarinPal / IdPay / Zibal.",
         "Use official SDKs in your backend; Mahsaagent only defines the shape + mock.",
-        "Example: zarinpal-node-sdk, zarinpal-checkout, @naeimsafaee/ipg-node.",
+        "Always verify amount server-side (mock enforces amount_mismatch).",
+        "Example packages: zarinpal-checkout, zarinpal-node-sdk, idpay SDKs.",
+        "Wire: createIpgRegistry([new YourDriver(), new MockIpgDriver()]).",
       ].join("\n");
     },
   };

@@ -3,12 +3,23 @@ const fs = require("fs");
 const path = require("path");
 const { execFile } = require("child_process");
 
+function rtlFile(name) {
+  const candidates = [
+    path.join(__dirname, "rtl", name),
+    path.join(__dirname, "..", "rtl", name),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return candidates[0];
+}
+
 function injectPath() {
-  return path.join(__dirname, "..", "rtl", "inject.js");
+  return rtlFile("inject.js");
 }
 
 function removePath() {
-  return path.join(__dirname, "..", "rtl", "remove.js");
+  return rtlFile("remove.js");
 }
 
 function cliPath() {

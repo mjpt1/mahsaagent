@@ -1,26 +1,32 @@
 /**
- * Mahsaagent RTL injector for Cursor / VS Code-based editors.
- * Paste into Developer Tools Console (Help → Toggle Developer Tools → Console).
- * Or run: Mahsaagent: Apply RTL from the extension command palette.
+ * Mahsaagent RTL for Cursor (incl. Glass layout).
+ *
+ * HOW TO APPLY:
+ * 1. Help → Toggle Developer Tools → Console
+ * 2. Type: allow pasting
+ * 3. Press Enter
+ * 4. Paste this file and press Enter
+ *
+ * You should see: Mahsaagent RTL applied
  */
 (function mahsaagentRtl() {
   const STYLE_ID = "mahsaagent-rtl-style";
-  const existing = document.getElementById(STYLE_ID);
-  if (existing) existing.remove();
+  document.getElementById(STYLE_ID)?.remove();
 
-  const style = document.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = `
+  const CSS = `
+/* —— chat / composer / glass —— */
 .markdown-root,
 .anysphere-markdown-container-root,
 .markdown-section,
 .composer-message-group,
 [data-message-kind="assistant"] .markdown-root,
+[data-message-kind="human"] .markdown-root,
 .composer-human-message,
 .composer-human-message-container,
 .human-message-with-todos-wrapper,
 .aislash-editor-input,
 .aislash-editor-input-readonly,
+[contenteditable="true"].aislash-editor-input,
 .todo-list-container,
 .ui-todo-list,
 .todo-list,
@@ -36,17 +42,28 @@
 .ui-step-group-header,
 .ui-collapsible-header,
 .composer-tool-former-message,
-.tool-summary-hover-target {
+.tool-summary-hover-target,
+[class*="composer-human"],
+[class*="ComposerHuman"],
+[class*="markdown-root"],
+[class*="MarkdownRoot"],
+[class*="agent-message"],
+[class*="AgentMessage"],
+[class*="chat-message"],
+[class*="ChatMessage"] {
   direction: rtl !important;
   text-align: right !important;
 }
+
 .aislash-editor-placeholder,
-[data-placeholder] {
+[data-placeholder],
+[class*="placeholder"] {
   direction: rtl !important;
   text-align: right !important;
   right: 15px !important;
   left: auto !important;
 }
+
 .markdown-root ul,
 .markdown-root ol,
 .markdown-section ul,
@@ -62,11 +79,13 @@
   direction: rtl !important;
   text-align: right !important;
 }
+
 .ui-todo-item__indicator,
 .todo-indicator-container {
   margin-left: 8px !important;
   margin-right: 0 !important;
 }
+
 .markdown-table-container {
   direction: ltr !important;
   overflow-x: auto !important;
@@ -83,6 +102,8 @@ table.markdown-table {
 .markdown-table td {
   text-align: right !important;
 }
+
+/* keep code / editor LTR */
 code,
 pre,
 .markdown-code-outer-container,
@@ -93,13 +114,37 @@ pre,
 .ui-default-code,
 .composer-message-codeblock,
 .markdown-root code,
-.markdown-section code {
+.markdown-section code,
+.terminal,
+.xterm,
+[class*="code-block"],
+[class*="CodeBlock"] {
   direction: ltr !important;
   text-align: left !important;
   unicode-bidi: plaintext !important;
 }
 `;
-  document.head.appendChild(style);
+
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+
+  // Avoid Trusted Types / CSP issues: never assign script; use text node for CSS
+  try {
+    if (window.trustedTypes && window.trustedTypes.createPolicy) {
+      const policy =
+        window.trustedTypes.createPolicy("mahsaagent-rtl-" + Date.now(), {
+          createHTML: (s) => s,
+        });
+      // style tags accept HTML policy in some Chromium builds
+      style.innerHTML = policy.createHTML(CSS);
+    } else {
+      style.appendChild(document.createTextNode(CSS));
+    }
+  } catch (_) {
+    style.appendChild(document.createTextNode(CSS));
+  }
+
+  (document.head || document.documentElement).appendChild(style);
   console.log(
     "%c Mahsaagent RTL applied ",
     "background:#0f766e;color:#fff;font-size:13px;padding:4px 8px;border-radius:4px;"

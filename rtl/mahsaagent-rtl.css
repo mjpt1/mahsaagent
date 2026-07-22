@@ -1,4 +1,4 @@
-/* Mahsaagent RTL — Persian / Arabic chat & markdown in Cursor / VS Code based editors.
+/* Mahsaagent RTL — Cursor / VS Code chat & markdown (incl. Glass).
    Code blocks, Monaco, and terminal stay LTR. */
 
 .markdown-root,
@@ -6,11 +6,13 @@
 .markdown-section,
 .composer-message-group,
 [data-message-kind="assistant"] .markdown-root,
+[data-message-kind="human"] .markdown-root,
 .composer-human-message,
 .composer-human-message-container,
 .human-message-with-todos-wrapper,
 .aislash-editor-input,
 .aislash-editor-input-readonly,
+[contenteditable="true"].aislash-editor-input,
 .todo-list-container,
 .ui-todo-list,
 .todo-list,
@@ -26,13 +28,22 @@
 .ui-step-group-header,
 .ui-collapsible-header,
 .composer-tool-former-message,
-.tool-summary-hover-target {
+.tool-summary-hover-target,
+[class*="composer-human"],
+[class*="ComposerHuman"],
+[class*="markdown-root"],
+[class*="MarkdownRoot"],
+[class*="agent-message"],
+[class*="AgentMessage"],
+[class*="chat-message"],
+[class*="ChatMessage"] {
   direction: rtl !important;
   text-align: right !important;
 }
 
 .aislash-editor-placeholder,
-[data-placeholder] {
+[data-placeholder],
+[class*="placeholder"] {
   direction: rtl !important;
   text-align: right !important;
   right: 15px !important;
@@ -90,7 +101,11 @@ pre,
 .ui-default-code,
 .composer-message-codeblock,
 .markdown-root code,
-.markdown-section code {
+.markdown-section code,
+.terminal,
+.xterm,
+[class*="code-block"],
+[class*="CodeBlock"] {
   direction: ltr !important;
   text-align: left !important;
   unicode-bidi: plaintext !important;

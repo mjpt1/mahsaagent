@@ -90,6 +90,40 @@ import {
 import { finglishToPersian, persianToFinglish } from "./lib/finglish.js";
 import { createIpgRegistry } from "./ipg/index.js";
 import { validateBankTerminalInput } from "./lib/shebaConvert.js";
+import { indexLocalDocs, searchLocalDocs, listDocIndexes } from "./lib/docIndex.js";
+import { searchCodebase } from "./lib/codeSearch.js";
+import { explainErrorText, explainStackTrace } from "./lib/errorExplain.js";
+import {
+  listRegexPatterns,
+  extractWithPattern,
+  type RegexPackKey,
+} from "./lib/regexPack.js";
+import { normalizeDevFinglish, listDevTerms } from "./lib/finglishDev.js";
+import { generateMockUserProfile, generateTestDataBatch } from "./lib/userProfile.js";
+import { lintRtlSnippet } from "./lib/rtlLint.js";
+import { labelsForSchema, labelForField, listKnownFieldLabels } from "./lib/schemaLabels.js";
+import { completeAddressForm } from "./lib/addressForm.js";
+import { parsePersianSchedulePhrase } from "./lib/schedulerNlp.js";
+import {
+  validateMoadianInvoiceDetailed,
+  explainMoadianField,
+  moadianFieldCatalog,
+  summarizeMoadianInvoice,
+} from "./lib/moadianPlus.js";
+import { adviseIpgIntegration, simulateIpgFlow, listIpgGateways } from "./lib/ipgAdvisor.js";
+import { syncBankFormFields } from "./lib/bankingSync.js";
+import { buildPersianFormSchema, listFormPresets, validateFormValues, type FormPreset } from "./lib/formBuilder.js";
+import {
+  getBusinessRules,
+  calcSampleOrder,
+  listBusinessRulePacks,
+  type BusinessRulePack,
+} from "./lib/businessRules.js";
+import { fixRtlSnippet } from "./lib/rtlFix.js";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const PKG = require("../package.json") as { version: string; name: string };
 
 export const TOOL_NAMES = [
   "jalali_today",
@@ -135,12 +169,33 @@ export const TOOL_NAMES = [
   "moadian_invoice",
   "ipg_mock",
   "mahsaagent_about",
+  "local_doc_index",
+  "local_doc_search",
+  "codebase_search",
+  "persian_regex_pack",
+  "dev_error_explain",
+  "stacktrace_explain_fa",
+  "finglish_dev_normalize",
+  "mock_user_profile",
+  "test_data_batch",
+  "rtl_lint_snippet",
+  "schema_labels_fa",
+  "iran_address_complete",
+  "jalali_schedule_parse",
+  "moadian_validate",
+  "moadian_explain",
+  "ipg_advise",
+  "ipg_simulate",
+  "bank_form_sync",
+  "persian_form_schema",
+  "iran_business_rules",
+  "rtl_fix_snippet",
 ] as const;
 
 export function createServer() {
   const server = new McpServer({
     name: "mahsaagent",
-    version: "0.6.1",
+    version: PKG.version,
   });
 
   function json(data: unknown) {
@@ -799,15 +854,297 @@ export function createServer() {
 
   server.tool(
     "moadian_invoice",
-    "Build/validate Moadian tax invoice payload shape + setup guide (no live tax API calls).",
+    "Build/validate Moadian tax invoice payload shape + sample + setup guide (no live tax API calls).",
     {
-      action: z.enum(["guide", "build"]).optional(),
+      action: z.enum(["guide", "build", "sample"]).optional(),
       invoice: z.record(z.unknown()).optional(),
+      sellerTins: z.string().optional(),
+      buyerTin: z.string().optional(),
     },
-    async ({ action, invoice }) => {
-      if ((action ?? "guide") === "guide") return json({ guide: moadianSetupGuide() });
+    async ({ action, invoice, sellerTins, buyerTin }) => {
+      const act = action ?? "guide";
+      if (act === "guide") return json({ guide: moadianSetupGuide() });
+      if (act === "sample") {
+        const { buildSampleMoadianInvoice } = await import("./lib/moadianPlus.js");
+        return json(buildSampleMoadianInvoice({ sellerTins, buyerTin }));
+      }
       if (!invoice) return json({ error: "invoice object required for build" });
       return json(buildMoadianInvoice(invoice as Parameters<typeof buildMoadianInvoice>[0]));
+    }
+  );
+
+  server.tool(
+    "local_doc_index",
+    "Index local docs/code text (md/txt/ts/json) for offline MCP search — no internet required.",
+    {
+      root: z.string(),
+      maxFiles: z.number().int().min(1).max(2000).optional(),
+      extensions: z.array(z.string()).optional(),
+    },
+    async ({ root, maxFiles, extensions }) => {
+      try {
+        return json(indexLocalDocs(root, { maxFiles, extensions }));
+      } catch (err) {
+        return json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  );
+
+  server.tool(
+    "local_doc_search",
+    "Search previously indexed local docs (call local_doc_index first).",
+    {
+      query: z.string(),
+      root: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    async ({ query, root, limit }) => json(searchLocalDocs(query, { root, limit }))
+  );
+
+  server.tool(
+    "codebase_search",
+    "Search a repo path with Persian/Finglish/English query variants (offline, best-effort).",
+    {
+      root: z.string(),
+      query: z.string(),
+      limit: z.number().int().min(1).max(100).optional(),
+      maxFiles: z.number().int().min(1).max(3000).optional(),
+    },
+    async ({ root, query, limit, maxFiles }) => {
+      try {
+        return json(searchCodebase(root, query, { limit, maxFiles }));
+      } catch (err) {
+        return json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  );
+
+  server.tool(
+    "persian_regex_pack",
+    "List or extract Iranian data patterns (national ID, mobile, Sheba, postal, …).",
+    {
+      action: z.enum(["list", "extract"]).optional(),
+      pattern: z
+        .enum([
+          "national_id",
+          "mobile",
+          "sheba",
+          "postal_code",
+          "landline",
+          "jalali_slash",
+          "card_16",
+          "plate_old",
+        ])
+        .optional(),
+      text: z.string().optional(),
+    },
+    async ({ action, pattern, text }) => {
+      if ((action ?? "list") === "list") return json({ patterns: listRegexPatterns() });
+      if (!pattern || !text) return json({ error: "pattern and text required for extract" });
+      return json(extractWithPattern(pattern as RegexPackKey, text));
+    }
+  );
+
+  server.tool(
+    "dev_error_explain",
+    "Explain common dev/DevOps error messages in simple Persian (offline pattern KB).",
+    { text: z.string() },
+    async ({ text }) => json(explainErrorText(text))
+  );
+
+  server.tool(
+    "stacktrace_explain_fa",
+    "Parse a stack trace / error blob and return Persian hints + frame list.",
+    { stack: z.string() },
+    async ({ stack }) => json(explainStackTrace(stack))
+  );
+
+  server.tool(
+    "finglish_dev_normalize",
+    "Normalize dev Finglish/technical tokens to Persian or English for prompts/commits.",
+    {
+      text: z.string(),
+      target: z.enum(["fa", "en", "both"]).optional(),
+      listTerms: z.boolean().optional(),
+    },
+    async ({ text, target, listTerms }) => {
+      if (listTerms) return json({ terms: listDevTerms() });
+      return json(normalizeDevFinglish(text, target ?? "both"));
+    }
+  );
+
+  server.tool(
+    "mock_user_profile",
+    "Generate a realistic mock Iranian user profile for forms/QA/demo.",
+    { seed: z.number().int().optional() },
+    async ({ seed }) => json(generateMockUserProfile(seed))
+  );
+
+  server.tool(
+    "test_data_batch",
+    "Batch-generate test users, mobiles, or national IDs for QA seeds.",
+    {
+      kind: z.enum(["users", "mobiles", "national_ids"]),
+      count: z.number().int().min(1).max(50),
+      seed: z.number().int().optional(),
+    },
+    async ({ kind, count, seed }) => json(generateTestDataBatch(kind, count, seed))
+  );
+
+  server.tool(
+    "rtl_lint_snippet",
+    "Lint HTML/CSS/TSX snippet for common RTL issues (logical properties, dir, Tailwind).",
+    {
+      code: z.string(),
+      kind: z.enum(["html", "css", "tsx", "auto"]).optional(),
+    },
+    async ({ code, kind }) => json(lintRtlSnippet(code, kind ?? "auto"))
+  );
+
+  server.tool(
+    "schema_labels_fa",
+    "Persian labels/hints/errors for form field names (Zod/JSON Schema helpers).",
+    {
+      fields: z.array(z.string()).optional(),
+      field: z.string().optional(),
+      listAll: z.boolean().optional(),
+    },
+    async ({ fields, field, listAll }) => {
+      if (listAll) return json({ fields: listKnownFieldLabels() });
+      if (field) return json(labelForField(field));
+      if (fields?.length) return json({ labels: labelsForSchema(fields) });
+      return json({ error: "Provide field, fields[], or listAll:true" });
+    }
+  );
+
+  server.tool(
+    "iran_address_complete",
+    "Smart-fill Iranian address form fields from postal/city/province hints + official geo cascade.",
+    {
+      postalCode: z.string().optional(),
+      province: z.string().optional(),
+      city: z.string().optional(),
+      county: z.string().optional(),
+      line: z.string().optional(),
+    },
+    async (input) => json(completeAddressForm(input))
+  );
+
+  server.tool(
+    "jalali_schedule_parse",
+    "Parse natural Persian schedule phrases with optional time (e.g. پس‌فردا ساعت ۳).",
+    { text: z.string() },
+    async ({ text }) => json(parsePersianSchedulePhrase(text))
+  );
+
+  server.tool(
+    "moadian_validate",
+    "Validate Moadian invoice payload shape + required fields (offline, no live API).",
+    { invoice: z.record(z.unknown()) },
+    async ({ invoice }) =>
+      json(validateMoadianInvoiceDetailed(invoice as Parameters<typeof validateMoadianInvoiceDetailed>[0]))
+  );
+
+  server.tool(
+    "moadian_explain",
+    "Explain Moadian invoice fields or summarize an invoice.",
+    {
+      path: z.string().optional(),
+      invoice: z.record(z.unknown()).optional(),
+      catalog: z.boolean().optional(),
+    },
+    async ({ path, invoice, catalog }) => {
+      if (catalog) return json(moadianFieldCatalog());
+      if (path) return json(explainMoadianField(path));
+      if (invoice) return json(summarizeMoadianInvoice(invoice as Parameters<typeof summarizeMoadianInvoice>[0]));
+      return json({ error: "Provide path, invoice, or catalog:true" });
+    }
+  );
+
+  server.tool(
+    "ipg_advise",
+    "Iranian payment gateway integration guide + npm hints (ZarinPal/IdPay/Zibal/mock).",
+    {
+      gateway: z.string().optional(),
+      amount: z.number().optional(),
+      callbackUrl: z.string().optional(),
+      currency: z.enum(["IRR", "IRT"]).optional(),
+      listGateways: z.boolean().optional(),
+    },
+    async ({ gateway, amount, callbackUrl, currency, listGateways }) => {
+      if (listGateways) return json({ gateways: listIpgGateways() });
+      return json(adviseIpgIntegration({ gateway, amount, callbackUrl, currency }));
+    }
+  );
+
+  server.tool(
+    "ipg_simulate",
+    "Run mock IPG pay+verify flow for local testing.",
+    {
+      amount: z.number(),
+      callbackUrl: z.string(),
+      currency: z.enum(["IRR", "IRT"]).optional(),
+    },
+    async (input) => json(await simulateIpgFlow(input))
+  );
+
+  server.tool(
+    "bank_form_sync",
+    "Detect and fix mismatches between card, Sheba, bank code, and account in forms.",
+    {
+      card: z.string().optional(),
+      sheba: z.string().optional(),
+      account: z.string().optional(),
+      bankCode: z.string().optional(),
+      bankName: z.string().optional(),
+    },
+    async (input) => json(syncBankFormFields(input))
+  );
+
+  server.tool(
+    "persian_form_schema",
+    "Build Iranian form field presets with Persian labels, runnable Zod schema factory, and optional value validation.",
+    {
+      preset: z
+        .enum(["signup", "checkout", "kyc", "address", "bank", "invoice", "support"])
+        .optional(),
+      listPresets: z.boolean().optional(),
+      values: z.record(z.unknown()).optional(),
+    },
+    async ({ preset, listPresets, values }) => {
+      if (listPresets) return json({ presets: listFormPresets() });
+      if (!preset) return json({ error: "Provide preset or listPresets:true" });
+      if (values) return json(validateFormValues(preset as FormPreset, values));
+      return json(buildPersianFormSchema(preset as FormPreset));
+    }
+  );
+
+  server.tool(
+    "rtl_fix_snippet",
+    "Rewrite HTML/CSS/TSX snippet toward RTL-safe logical properties (ml→ms, margin-left→inline-start, …).",
+    { code: z.string() },
+    async ({ code }) => json(fixRtlSnippet(code))
+  );
+
+  server.tool(
+    "iran_business_rules",
+    "Offline Iranian shop/invoice/shipping/payment/tax business rules reference.",
+    {
+      pack: z.enum(["shop", "invoice", "shipping", "payment", "tax"]).optional(),
+      listPacks: z.boolean().optional(),
+      calcOrder: z
+        .object({
+          subtotalToman: z.number(),
+          discountPercent: z.number().optional(),
+          vatRate: z.number().optional(),
+          shippingZone: z.enum(["tehran", "major", "remote"]).optional(),
+        })
+        .optional(),
+    },
+    async ({ pack, listPacks, calcOrder }) => {
+      if (listPacks) return json({ packs: listBusinessRulePacks() });
+      if (calcOrder) return json(calcSampleOrder(calcOrder));
+      return json(getBusinessRules((pack ?? "shop") as BusinessRulePack));
     }
   );
 
@@ -818,8 +1155,9 @@ export function createServer() {
     async () =>
       json({
         name: "mahsaagent",
-        version: "0.6.1",
-        description: "Persian developer toolkit: RTL, Jalali, locale validation, geo, banks, UI skills",
+        version: PKG.version,
+        description:
+          "Persian developer toolkit: RTL, Jalali, locale validation, geo, banks, offline doc/code search, UI skills",
         tools: TOOL_NAMES,
         toolCount: TOOL_NAMES.length,
         skills: [
@@ -842,12 +1180,15 @@ export function createServer() {
         ],
         exports: [
           "mahsaagent/zod",
+          "mahsaagent/jalali",
+          "mahsaagent/text",
           "mahsaagent/react",
           "mahsaagent/react/forms",
           "mahsaagent/vue",
           "mahsaagent/moadian",
           "mahsaagent/ipg",
           "mahsaagent/address",
+          "mahsaagent/forms",
         ],
         transports: ["stdio", "streamable-http"],
         geo: officialMeta(),

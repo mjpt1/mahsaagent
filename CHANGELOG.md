@@ -2,6 +2,40 @@
 
 All notable changes to Mahsaagent are documented here.
 
+## [0.8.1] — 2026-07-14
+
+### Completed (incomplete / stub gaps)
+- Moadian: line math validation, `buildSampleMoadianInvoice`, sample MCP/CLI action
+- Form builder: runnable Zod presets + `validateFormValues`
+- IPG mock: amount-binding verify + richer raw responses
+- Doc index: best-effort PDF text extraction
+- `rtl_fix_snippet` + CLI for all Phase 1–2 tools
+- Version single-source from `package.json`; docs synced to 0.8.1 / 64 tools
+- Public export `mahsaagent/forms`
+
+## [0.8.0] — 2026-07-14
+
+### Added (Phase 2 — Iranian domain pack)
+- `iran_address_complete` — smart address form fill + geo cascade
+- `jalali_schedule_parse` — natural date/time scheduling (پس‌فردا ساعت ۳)
+- `moadian_validate` / `moadian_explain` — invoice validator + field explainer
+- `ipg_advise` / `ipg_simulate` — IPG integration guide + mock flow
+- `bank_form_sync` — card/Sheba/bank code consistency fixes
+- `persian_form_schema` — checkout/KYC/bank form presets + Zod hints
+- `iran_business_rules` — shop/tax/shipping/payment rules + order calc
+
+## [0.7.0] — 2026-07-14
+
+### Added (offline MCP / DX pack)
+- `local_doc_index` / `local_doc_search` — local doc index + search (md/txt/ts/json)
+- `codebase_search` — repo search with Persian/Finglish query variants
+- `persian_regex_pack` — Iranian data regex library
+- `dev_error_explain` / `stacktrace_explain_fa` — offline error/stack KB in Persian
+- `finglish_dev_normalize` — dev/tech Finglish normalizer
+- `mock_user_profile` / `test_data_batch` — Iranian test data factory
+- `rtl_lint_snippet` — RTL pattern linter for HTML/CSS/TSX
+- `schema_labels_fa` — Persian form field labels for Zod/JSON Schema
+
 ## [0.6.2] — 2026-07-13
 
 ### Security / trust

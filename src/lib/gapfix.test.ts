@@ -43,5 +43,5 @@ test("nlp keyboard typo farda", () => {
 test("tools include place helpers", () => {
   assert.ok(TOOL_NAMES.includes("iran_national_id_place"));
   assert.ok(TOOL_NAMES.includes("persian_bank_terminal"));
-  assert.ok(TOOL_NAMES.length >= 43);
+  assert.ok(TOOL_NAMES.length >= 64);
 });

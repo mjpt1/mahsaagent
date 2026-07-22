@@ -51,9 +51,30 @@ import { searchVillages } from "./lib/villages.js";
 import { polishPersian } from "./lib/polish.js";
 import { convertMoney, formatMoneyFa } from "./lib/currency.js";
 import { generateTestNationalId, generateTestSheba } from "./lib/generators.js";
-import { moadianSetupGuide } from "./moadian/index.js";
+import { moadianSetupGuide, buildSampleMoadianInvoice } from "./moadian/index.js";
 import { searchOfficialCities, officialMeta } from "./lib/officialGeo.js";
 import { postalToPlace, landlineToPlace } from "./lib/extraValidate.js";
+import { completeAddressForm } from "./lib/addressForm.js";
+import { parsePersianSchedulePhrase } from "./lib/schedulerNlp.js";
+import { validateMoadianInvoiceDetailed } from "./lib/moadianPlus.js";
+import { adviseIpgIntegration, simulateIpgFlow } from "./lib/ipgAdvisor.js";
+import { syncBankFormFields } from "./lib/bankingSync.js";
+import {
+  buildPersianFormSchema,
+  validateFormValues,
+  listFormPresets,
+  type FormPreset,
+} from "./lib/formBuilder.js";
+import { getBusinessRules, calcSampleOrder } from "./lib/businessRules.js";
+import { indexLocalDocs, searchLocalDocs } from "./lib/docIndex.js";
+import { searchCodebase } from "./lib/codeSearch.js";
+import { explainErrorText, explainStackTrace } from "./lib/errorExplain.js";
+import { listRegexPatterns, extractWithPattern, type RegexPackKey } from "./lib/regexPack.js";
+import { normalizeDevFinglish } from "./lib/finglishDev.js";
+import { generateMockUserProfile, generateTestDataBatch } from "./lib/userProfile.js";
+import { lintRtlSnippet } from "./lib/rtlLint.js";
+import { fixRtlSnippet } from "./lib/rtlFix.js";
+import { labelsForSchema } from "./lib/schemaLabels.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -96,7 +117,25 @@ Usage:
   mahsaagent banks                   List bank registry
   mahsaagent business [date]         Business-day check (default: today)
   mahsaagent events [year|date]      Cultural/religious events
-  mahsaagent moadian                 Moadian setup guide
+  mahsaagent moadian [guide|sample|validate]  Moadian offline helper
+  mahsaagent schedule <phrase>       Parse «پس‌فردا ساعت ۳»
+  mahsaagent address-complete …      Smart address fill (--postal --city …)
+  mahsaagent form-schema <preset>    Iranian form presets (+ --validate JSON)
+  mahsaagent bank-sync …             Sync card/sheba/bank fields
+  mahsaagent ipg [advise|simulate]   IPG guide / mock pay+verify
+  mahsaagent rules [shop|tax|…]      Business rules / --calc JSON
+  mahsaagent doc-index <path>        Index local docs (incl. PDF text)
+  mahsaagent doc-search <q>          Search indexed docs (--root)
+  mahsaagent code-search <q>         Search codebase (--root)
+  mahsaagent explain-error <text>    Dev error → فارسی
+  mahsaagent stacktrace <text>       Stack → فارسی
+  mahsaagent regex [list|extract]    Iranian regex pack
+  mahsaagent finglish-dev <text>     Dev Finglish normalize
+  mahsaagent mock-user [seed]        Mock Iranian profile
+  mahsaagent test-data <kind> <n>    Batch users|mobiles|national_ids
+  mahsaagent rtl-lint <file|snippet> RTL lint
+  mahsaagent rtl-fix <file|snippet> RTL auto-fix
+  mahsaagent labels <fields…>        Persian schema labels
   mahsaagent version | help
 `.trim()
   );
@@ -151,7 +190,7 @@ function doctor() {
   console.log(`${nid.valid ? "✓" : "✗"} sample national_id checksum`);
   if (!nid.valid) ok = false;
 
-  const toolsOk = TOOL_NAMES.length >= 40;
+  const toolsOk = TOOL_NAMES.length >= 64;
   console.log(`${toolsOk ? "✓" : "✗"} tool registry (${TOOL_NAMES.length})`);
   if (!toolsOk) ok = false;
 
@@ -547,8 +586,163 @@ async function main() {
     case "events":
       cmdEvents(rest[0]);
       break;
-    case "moadian":
-      console.log(moadianSetupGuide());
+    case "moadian": {
+      const sub = rest[0] ?? "guide";
+      if (sub === "sample") console.log(JSON.stringify(buildSampleMoadianInvoice(), null, 2));
+      else if (sub === "validate" && rest[1]) {
+        try {
+          const inv = JSON.parse(rest.slice(1).join(" "));
+          console.log(JSON.stringify(validateMoadianInvoiceDetailed(inv), null, 2));
+        } catch {
+          console.error("Usage: mahsaagent moadian validate '{...invoice json...}'");
+          process.exit(1);
+        }
+      } else console.log(moadianSetupGuide());
+      break;
+    }
+    case "schedule":
+      console.log(JSON.stringify(parsePersianSchedulePhrase(rest.join(" ")), null, 2));
+      break;
+    case "address-complete": {
+      const get = (f: string) => (rest.includes(f) ? rest[rest.indexOf(f) + 1] : undefined);
+      console.log(
+        JSON.stringify(
+          completeAddressForm({
+            postalCode: get("--postal"),
+            province: get("--province"),
+            city: get("--city"),
+            county: get("--county"),
+            line: get("--line"),
+          }),
+          null,
+          2
+        )
+      );
+      break;
+    }
+    case "form-schema": {
+      if (rest[0] === "--list") {
+        console.log(JSON.stringify(listFormPresets(), null, 2));
+        break;
+      }
+      const preset = rest[0] as FormPreset;
+      if (!preset) {
+        console.error("Usage: mahsaagent form-schema <preset>|--list [--validate '{...}']");
+        process.exit(1);
+      }
+      if (rest.includes("--validate")) {
+        const j = rest[rest.indexOf("--validate") + 1];
+        console.log(JSON.stringify(validateFormValues(preset, JSON.parse(j)), null, 2));
+      } else console.log(JSON.stringify(buildPersianFormSchema(preset), null, 2));
+      break;
+    }
+    case "bank-sync": {
+      const get = (f: string) => (rest.includes(f) ? rest[rest.indexOf(f) + 1] : undefined);
+      console.log(
+        JSON.stringify(
+          syncBankFormFields({
+            card: get("--card"),
+            sheba: get("--sheba"),
+            account: get("--account"),
+            bankCode: get("--bank"),
+          }),
+          null,
+          2
+        )
+      );
+      break;
+    }
+    case "ipg": {
+      const sub = rest[0] ?? "advise";
+      if (sub === "simulate") {
+        const amount = Number(rest[1] ?? 10000);
+        const cb = rest[2] ?? "https://example.test/cb";
+        console.log(JSON.stringify(await simulateIpgFlow({ amount, callbackUrl: cb }), null, 2));
+      } else {
+        console.log(
+          JSON.stringify(
+            adviseIpgIntegration({
+              gateway: rest[1],
+              amount: rest[2] ? Number(rest[2]) : undefined,
+              callbackUrl: rest[3],
+            }),
+            null,
+            2
+          )
+        );
+      }
+      break;
+    }
+    case "rules": {
+      if (rest[0] === "--calc") {
+        console.log(JSON.stringify(calcSampleOrder(JSON.parse(rest[1] ?? "{}")), null, 2));
+      } else console.log(JSON.stringify(getBusinessRules((rest[0] as "shop") ?? "shop"), null, 2));
+      break;
+    }
+    case "doc-index":
+      if (!rest[0]) {
+        console.error("Usage: mahsaagent doc-index <path>");
+        process.exit(1);
+      }
+      console.log(JSON.stringify(indexLocalDocs(rest[0]), null, 2));
+      break;
+    case "doc-search": {
+      const rootIdx = rest.indexOf("--root");
+      const rootPath = rootIdx >= 0 ? rest[rootIdx + 1] : undefined;
+      const q = rest.filter((_, i) => i !== rootIdx && i !== rootIdx + 1).join(" ");
+      console.log(JSON.stringify(searchLocalDocs(q, { root: rootPath }), null, 2));
+      break;
+    }
+    case "code-search": {
+      const rootIdx = rest.indexOf("--root");
+      const rootPath = rootIdx >= 0 ? rest[rootIdx + 1] : root;
+      const q = rest.filter((_, i) => i !== rootIdx && i !== rootIdx + 1).join(" ");
+      console.log(JSON.stringify(searchCodebase(rootPath, q, { limit: 20 }), null, 2));
+      break;
+    }
+    case "explain-error":
+      console.log(JSON.stringify(explainErrorText(rest.join(" ")), null, 2));
+      break;
+    case "stacktrace":
+      console.log(JSON.stringify(explainStackTrace(rest.join("\n")), null, 2));
+      break;
+    case "regex":
+      if ((rest[0] ?? "list") === "list") console.log(JSON.stringify(listRegexPatterns(), null, 2));
+      else if (rest[0] === "extract" && rest[1] && rest[2]) {
+        console.log(JSON.stringify(extractWithPattern(rest[1] as RegexPackKey, rest.slice(2).join(" ")), null, 2));
+      } else {
+        console.error("Usage: mahsaagent regex list | extract <key> <text>");
+        process.exit(1);
+      }
+      break;
+    case "finglish-dev":
+      console.log(JSON.stringify(normalizeDevFinglish(rest.join(" ")), null, 2));
+      break;
+    case "mock-user":
+      console.log(JSON.stringify(generateMockUserProfile(rest[0] ? Number(rest[0]) : undefined), null, 2));
+      break;
+    case "test-data": {
+      const kind = rest[0] as "users" | "mobiles" | "national_ids";
+      const n = Number(rest[1] ?? 5);
+      if (!kind) {
+        console.error("Usage: mahsaagent test-data users|mobiles|national_ids <count>");
+        process.exit(1);
+      }
+      console.log(JSON.stringify(generateTestDataBatch(kind, n), null, 2));
+      break;
+    }
+    case "rtl-lint": {
+      const code = rest[0] && fs.existsSync(rest[0]) ? fs.readFileSync(rest[0], "utf8") : rest.join(" ");
+      console.log(JSON.stringify(lintRtlSnippet(code), null, 2));
+      break;
+    }
+    case "rtl-fix": {
+      const code = rest[0] && fs.existsSync(rest[0]) ? fs.readFileSync(rest[0], "utf8") : rest.join(" ");
+      console.log(JSON.stringify(fixRtlSnippet(code), null, 2));
+      break;
+    }
+    case "labels":
+      console.log(JSON.stringify(labelsForSchema(rest), null, 2));
       break;
     case "version":
     case "-V":
